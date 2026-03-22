@@ -62,212 +62,136 @@
   <div id="nightOverlay">
     <div id="nightHint">3x mit 2 Fingern tippen zum Einschalten</div>
   </div>
-
   <script>
-    const FB = {
-      apiKey:"AIzaSyBQPi4f2qWg3xA65hLL7IpxOiq3kzVk5ls",
-      authDomain:"ninja-hq-chris.firebaseapp.com",
-      databaseURL:"https://ninja-hq-chris-default-rtdb.firebaseio.com",
-      projectId:"ninja-hq-chris",
-      storageBucket:"ninja-hq-chris.firebasestorage.app",
-      messagingSenderId:"811964168411",
-      appId:"1:811964168411:web:f49a87b1bdcb6aaebf74fe"
-    };
+    const FB={apiKey:"AIzaSyBQPi4f2qWg3xA65hLL7IpxOiq3kzVk5ls",authDomain:"ninja-hq-chris.firebaseapp.com",databaseURL:"https://ninja-hq-chris-default-rtdb.firebaseio.com",projectId:"ninja-hq-chris",storageBucket:"ninja-hq-chris.firebasestorage.app",messagingSenderId:"811964168411",appId:"1:811964168411:web:f49a87b1bdcb6aaebf74fe"};
     firebase.initializeApp(FB);
-    const db = firebase.database();
-    const S = db.ref('babyphone/session');
-
-    const ICE = {iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]};
-    let stream=null, pc=null, cameras=[], activeCamId=null;
-
-    window.addEventListener('load', ()=>{ tryStart(false); });
-
-    async function tryStart(fromTap) {
-      let timedOut=false, timer=null;
-      if (!fromTap) {
-        timer = setTimeout(()=>{ timedOut=true; hide('loadScreen'); show('tapScreen'); }, 3000);
-      }
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},
-          audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}
-        });
-        if(timer) clearTimeout(timer);
-        if(!timedOut) onCameraReady();
-      } catch(e) {
-        if(timer) clearTimeout(timer);
+    const db=firebase.database(), S=db.ref('babyphone/session');
+    const ICE={iceServers:[
+    {urls:'stun:stun.l.google.com:19302'},
+    {urls:'stun:stun1.l.google.com:19302'},
+    {urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},
+    {urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'},
+    {urls:'turn:openrelay.metered.ca:443?transport=tcp',username:'openrelayproject',credential:'openrelayproject'}
+  ]};
+    let stream=null,pc=null,cameras=[],activeCamId=null;
+    window.addEventListener('load',()=>tryStart(false));
+    async function tryStart(fromTap){
+      let timedOut=false,timer=null;
+      if(!fromTap) timer=setTimeout(()=>{timedOut=true;hide('loadScreen');show('tapScreen');},3000);
+      try{
+        stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+        if(timer)clearTimeout(timer);
+        if(!timedOut)onCameraReady();
+      }catch(e){
+        if(timer)clearTimeout(timer);
         hide('loadScreen');
-        if(!fromTap) show('tapScreen');
+        if(!fromTap)show('tapScreen');
         else alert('Kamera verweigert: '+e.message);
       }
     }
-
-    function onTap(){ hide('tapScreen'); show('loadScreen'); tryStart(true); }
-
-    async function onCameraReady() {
-      hide('loadScreen'); hide('tapScreen');
+    function onTap(){hide('tapScreen');show('loadScreen');tryStart(true);}
+    async function onCameraReady(){
+      hide('loadScreen');hide('tapScreen');
       document.getElementById('liveView').classList.add('visible');
-      document.getElementById('cameraFeed').srcObject = stream;
-      activeCamId = stream.getVideoTracks()[0]?.getSettings()?.deviceId || null;
-      keepScreenOn(); keepAliveAudio();
+      document.getElementById('cameraFeed').srcObject=stream;
+      activeCamId=stream.getVideoTracks()[0]?.getSettings()?.deviceId||null;
+      keepScreenOn();keepAliveAudio();
       await loadCameras();
       setupNightExit();
       startRTC();
     }
-
-    // ── Camera switching ───────────────────────────────────────
-    async function loadCameras() {
-      try {
-        const devs = await navigator.mediaDevices.enumerateDevices();
-        cameras = devs.filter(d=>d.kind==='videoinput').map(d=>({
-          deviceId:d.deviceId, label:d.label, display:camLabel(d.label)
-        }));
+    async function loadCameras(){
+      try{
+        const devs=await navigator.mediaDevices.enumerateDevices();
+        cameras=devs.filter(d=>d.kind==='videoinput').map(d=>({deviceId:d.deviceId,label:d.label,display:camLabel(d.label)}));
         renderCamBtns();
-      } catch(e){}
+      }catch(e){}
     }
-
-    function camLabel(l) {
-      const s = l.toLowerCase();
-      if(s.includes('ultra wide')||s.includes('ultrawide')) return '0.5x';
-      if(s.includes('telephoto')||s.includes('tele')) return 'Tele';
-      if(s.includes('front')||s.includes('vorder')||s.includes('facetime')) return '&#x21BA; Vorne';
-      if(s.includes('back')||s.includes('rear')||s.includes('hinten')) return '1x';
-      return l.replace(/[()]/g,'').trim().split(' ').slice(0,2).join(' ') || '1x';
+    function camLabel(l){
+      const s=l.toLowerCase();
+      if(s.includes('ultra wide')||s.includes('ultrawide'))return '0.5x';
+      if(s.includes('telephoto')||s.includes('tele'))return 'Tele';
+      if(s.includes('front')||s.includes('vorder')||s.includes('facetime'))return '&#x21BA; Vorne';
+      if(s.includes('back')||s.includes('rear')||s.includes('hinten'))return '1x';
+      return l.replace(/[()]/g,'').trim().split(' ').slice(0,2).join(' ')||'Kamera';
     }
-
-    function renderCamBtns() {
-      const row = document.getElementById('camRow');
-      row.innerHTML='';
-      if(cameras.length<=1) return;
+    function renderCamBtns(){
+      const row=document.getElementById('camRow');row.innerHTML='';
+      if(cameras.length<=1)return;
       cameras.forEach(cam=>{
         const b=document.createElement('button');
         b.className='cam-btn'+(cam.deviceId===activeCamId?' active':'');
-        b.innerHTML=cam.display;
-        b.onclick=()=>switchCam(cam.deviceId);
+        b.innerHTML=cam.display;b.onclick=()=>switchCam(cam.deviceId);
         row.appendChild(b);
       });
     }
-
-    async function switchCam(deviceId) {
-      if(deviceId===activeCamId) return;
-      try {
-        const ns = await navigator.mediaDevices.getUserMedia({
-          video:{deviceId:{exact:deviceId},width:{ideal:1920},height:{ideal:1080}},
-          audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}
-        });
-        const nv = ns.getVideoTracks()[0];
-        const na = ns.getAudioTracks()[0];
-        if(pc) {
-          pc.getSenders().forEach(s=>{
-            if(s.track?.kind==='video' && nv) s.replaceTrack(nv);
-            if(s.track?.kind==='audio' && na) s.replaceTrack(na);
-          });
-        }
-        stream.getTracks().forEach(t=>t.stop());
-        stream = ns;
-        document.getElementById('cameraFeed').srcObject = stream;
-        activeCamId = deviceId;
-        renderCamBtns();
-      } catch(e){ alert('Kamerawechsel fehlgeschlagen: '+e.message); }
+    async function switchCam(deviceId){
+      if(deviceId===activeCamId)return;
+      try{
+        const ns=await navigator.mediaDevices.getUserMedia({video:{deviceId:{exact:deviceId},width:{ideal:1920},height:{ideal:1080}},audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+        const nv=ns.getVideoTracks()[0],na=ns.getAudioTracks()[0];
+        if(pc)pc.getSenders().forEach(s=>{if(s.track?.kind==='video'&&nv)s.replaceTrack(nv);if(s.track?.kind==='audio'&&na)s.replaceTrack(na);});
+        stream.getTracks().forEach(t=>t.stop());stream=ns;
+        document.getElementById('cameraFeed').srcObject=stream;
+        activeCamId=deviceId;renderCamBtns();
+      }catch(e){alert('Kamerawechsel fehlgeschlagen: '+e.message);}
     }
-
-    // ── WebRTC via Firebase ────────────────────────────────────
-    async function startRTC() {
+    async function startRTC(){
       setStatus('orange','Verbinde...');
-      // Clean old session
       await S.remove();
-
-      pc = new RTCPeerConnection(ICE);
+      pc=new RTCPeerConnection(ICE);
       stream.getTracks().forEach(t=>pc.addTrack(t,stream));
-
       let iceBuf=[];
-      pc.onicecandidate = e => {
-        if(e.candidate) S.child('ci').push(e.candidate.toJSON());
-      };
-
-      pc.onconnectionstatechange = ()=>{
-        const st = pc.connectionState;
-        if(st==='connected'){ setStatus('green','Live - wird uebertragen'); showBanner(true); }
-        else if(st==='connecting'){ setStatus('orange','Verbindet...'); }
+      pc.onicecandidate=e=>{if(e.candidate)S.child('ci').push(e.candidate.toJSON());};
+      pc.onconnectionstatechange=()=>{
+        const st=pc.connectionState;
+        if(st==='connected'){setStatus('green','Live');showBanner(true);}
+        else if(st==='connecting')setStatus('orange','Verbindet...');
         else if(['failed','disconnected','closed'].includes(st)){
-          showBanner(false); setStatus('orange','Neuverbindung...');
-          pc.close(); pc=null;
-          setTimeout(startRTC, 2000);
+          showBanner(false);setStatus('orange','Neuverbindung...');
+          pc.close();pc=null;setTimeout(startRTC,2000);
         }
       };
-
-      const offer = await pc.createOffer();
+      const offer=await pc.createOffer();
       await pc.setLocalDescription(offer);
       await S.child('offer').set({sdp:offer.sdp,type:offer.type,ts:Date.now()});
       setStatus('green','Bereit - warte auf Viewer...');
-
-      // Watch for viewer answer
-      S.child('answer').on('value', async snap=>{
-        if(!snap.val()||!pc||pc.remoteDescription) return;
-        try {
-          await pc.setRemoteDescription(new RTCSessionDescription(snap.val()));
-          setStatus('orange','Verbindet...');
-        } catch(e){}
+      S.child('answer').on('value',async snap=>{
+        if(!snap.val()||!pc||pc.remoteDescription)return;
+        try{await pc.setRemoteDescription(new RTCSessionDescription(snap.val()));setStatus('orange','Verbindet...');}catch(e){}
       });
-
-      // Watch for viewer ICE
-      S.child('vi').on('child_added', snap=>{
-        if(!pc) return;
-        const c = snap.val();
-        if(pc.remoteDescription) pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{});
+      S.child('vi').on('child_added',snap=>{
+        if(!pc)return;
+        const c=snap.val();
+        if(pc.remoteDescription)pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{});
         else iceBuf.push(c);
       });
-
       pc.addEventListener('signalingstatechange',()=>{
-        if(pc.signalingState==='stable') {
-          iceBuf.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}));
-          iceBuf=[];
-        }
+        if(pc&&pc.signalingState==='stable'){iceBuf.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}));iceBuf=[];}
       });
     }
-
-    // ── Night mode ─────────────────────────────────────────────
-    function enterNightMode(){ document.getElementById('nightOverlay').classList.add('active'); }
-    function exitNightMode(){ document.getElementById('nightOverlay').classList.remove('active'); }
-
+    function enterNightMode(){document.getElementById('nightOverlay').classList.add('active');}
+    function exitNightMode(){document.getElementById('nightOverlay').classList.remove('active');}
     function setupNightExit(){
-      const o=document.getElementById('nightOverlay');
-      let cnt=0, t=null;
-      o.addEventListener('touchend', e=>{
-        if(e.changedTouches.length===2 && e.touches.length===0){
-          cnt++;
-          if(t) clearTimeout(t);
-          if(cnt>=3){ cnt=0; exitNightMode(); }
-          else t=setTimeout(()=>{ cnt=0; },800);
+      const o=document.getElementById('nightOverlay');let cnt=0,t=null;
+      o.addEventListener('touchend',e=>{
+        if(e.changedTouches.length===2&&e.touches.length===0){
+          cnt++;if(t)clearTimeout(t);
+          if(cnt>=3){cnt=0;exitNightMode();}
+          else t=setTimeout(()=>{cnt=0;},800);
         }
         e.preventDefault();
       },{passive:false});
     }
-
-    // ── Keep alive ─────────────────────────────────────────────
     async function keepScreenOn(){
-      try{
-        if('wakeLock' in navigator){
-          const wl=await navigator.wakeLock.request('screen');
-          wl.addEventListener('release',()=>{ if(document.visibilityState==='visible') keepScreenOn(); });
-        }
-      }catch(e){}
-      document.addEventListener('visibilitychange',()=>{
-        if(document.visibilityState==='visible') keepScreenOn();
-      });
+      try{if('wakeLock'in navigator){const wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{if(document.visibilityState==='visible')keepScreenOn();});}}catch(e){}
+      document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')keepScreenOn();});
     }
-    function keepAliveAudio(){
-      try{
-        const ctx=new(window.AudioContext||window.webkitAudioContext)();
-        const o=ctx.createOscillator(),g=ctx.createGain();
-        g.gain.value=0.0001; o.connect(g); g.connect(ctx.destination); o.start();
-      }catch(e){}
-    }
-
-    function setStatus(c,t){ document.getElementById('dot').className='dot '+c; document.getElementById('statusText').textContent=t; }
-    function showBanner(on){ document.getElementById('connBanner').classList.toggle('show',on); }
-    function show(id){ const e=document.getElementById(id); if(e) e.style.display=''; }
-    function hide(id){ const e=document.getElementById(id); if(e) e.style.display='none'; }
+    function keepAliveAudio(){try{const ctx=new(window.AudioContext||window.webkitAudioContext)(),o=ctx.createOscillator(),g=ctx.createGain();g.gain.value=0.0001;o.connect(g);g.connect(ctx.destination);o.start();}catch(e){}}
+    function setStatus(c,t){document.getElementById('dot').className='dot '+c;document.getElementById('statusText').textContent=t;}
+    function showBanner(on){document.getElementById('connBanner').classList.toggle('show',on);}
+    function show(id){const e=document.getElementById(id);if(e)e.style.display='';}
+    function hide(id){const e=document.getElementById(id);if(e)e.style.display='none';}
   </script>
 </body>
 </html>
