@@ -69,9 +69,8 @@ h1{font-size:26px;font-weight:700}
 .cellLabel{font-size:11px;color:#ddd;font-weight:600}
 
 /* cell cam buttons — always at bottom of cell */
-.cellCamBar{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:4px;padding:6px 8px 8px;background:linear-gradient(to top,rgba(0,0,0,.65),transparent);flex-wrap:wrap;opacity:0;transition:opacity .2s;z-index:5}
-.vidCell:hover .cellCamBar{opacity:1}
-.vidCell.solo .cellCamBar{opacity:1}
+.cellCamBar{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:4px;padding:6px 8px 8px;background:linear-gradient(to top,rgba(0,0,0,.65),transparent);flex-wrap:wrap;opacity:.7;transition:opacity .2s;z-index:5}
+.vidCell:hover .cellCamBar,.vidCell.solo .cellCamBar{opacity:1}
 .cBtn{background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.25);border-radius:100px;color:#fff;font-size:11px;font-weight:600;padding:4px 10px;cursor:pointer;transition:all .15s}
 .cBtn:hover{background:rgba(255,255,255,.18)}
 .cBtn.active{background:rgba(255,220,0,.9);color:#000;border-color:transparent}
@@ -339,7 +338,7 @@ function applyVideoTransform(slot){
  }
 }
 
-/* ── Recording (only in single-cam mode) ────────────────── */
+/* ── Recording ──────────────────────────────────────────── */
 function pickMime(){
  const c=[{mime:'video/mp4;codecs=h264,aac',ext:'mp4'},{mime:'video/mp4;codecs=avc1',ext:'mp4'},{mime:'video/mp4',ext:'mp4'},{mime:'video/webm;codecs=vp9,opus',ext:'webm'},{mime:'video/webm;codecs=vp8,opus',ext:'webm'},{mime:'video/webm',ext:'webm'}];
  for(const x of c)if(MediaRecorder.isTypeSupported(x.mime))return x;
@@ -349,62 +348,73 @@ function pickMime(){
 function toggleRec(){if(mr&&mr.state==='recording')stopRec();else startRec();}
 
 function startRec(){
- // In 'all' mode pick first connected cam; in single mode use that cam
- let slot=(viewMode!=='all')?viewMode:(recSlot||SLOTS.find(s=>peers[s]&&peers[s].connected));
- if(!slot)return;
- const vid=document.getElementById('vid-'+slot);
- if(!vid||!vid.srcObject)return;
- chunks=[];recSlot=slot;
+ // Collect slots to record: in 'all' mode → all connected; in single mode → that cam
+ const slots=viewMode==='all'
+  ?SLOTS.filter(s=>peers[s]&&peers[s].connected&&document.getElementById('vid-'+s)?.srcObject)
+  :(peers[viewMode]?.connected&&document.getElementById('vid-'+viewMode)?.srcObject?[viewMode]:[]);
+ if(!slots.length)return;
+ chunks=[];recSlot=slots[0];
 
- const rotation=peers[slot].rotation;
- const startW=vid.videoWidth||1280,startH=vid.videoHeight||720;
- const swapped=(rotation===90||rotation===270);
- const canvasW=swapped?startH:startW;
- const canvasH=swapped?startW:startH;
+ const cW=1280,cH=720;
  recCanvas=document.createElement('canvas');
- recCanvas.width=canvasW;recCanvas.height=canvasH;
+ recCanvas.width=cW;recCanvas.height=cH;
  const ctx=recCanvas.getContext('2d');
+
+ // Rect for each slot in the composite canvas
+ function cellRect(i,n){
+  if(n===1)return{x:0,y:0,w:cW,h:cH};
+  if(n===2)return{x:i*(cW/2),y:0,w:cW/2,h:cH};
+  // 3: top-left, top-right, bottom full
+  if(i===0)return{x:0,y:0,w:cW/2,h:cH/2};
+  if(i===1)return{x:cW/2,y:0,w:cW/2,h:cH/2};
+  return{x:0,y:cH/2,w:cW,h:cH/2};
+ }
+
+ // For single-cam: respect rotation
+ const rotation=(slots.length===1)?(peers[slots[0]]?.rotation||0):0;
 
  function drawFrame(){
   if(!recCanvas)return;
-  ctx.fillStyle='#000';
-  ctx.fillRect(0,0,canvasW,canvasH);
-  const curW=vid.videoWidth,curH=vid.videoHeight;
-  if(!curW||!curH){recRafId=requestAnimationFrame(drawFrame);return;}
-  if(rotation===0||rotation===180){
-   const scale=Math.min(canvasW/curW,canvasH/curH);
+  ctx.fillStyle='#000';ctx.fillRect(0,0,cW,cH);
+  if(slots.length===1&&rotation!==0){
+   const vid=document.getElementById('vid-'+slots[0]);
+   if(!vid||!vid.videoWidth){recRafId=requestAnimationFrame(drawFrame);return;}
+   const curW=vid.videoWidth,curH=vid.videoHeight;
+   const swapped=(rotation===90||rotation===270);
+   const scale=swapped?Math.min(cW/curH,cH/curW):Math.min(cW/curW,cH/curH);
    const dw=curW*scale,dh=curH*scale;
-   const x=(canvasW-dw)/2,y=(canvasH-dh)/2;
-   ctx.save();
    if(rotation===180){
-    ctx.translate(canvasW,canvasH);ctx.rotate(Math.PI);
-    ctx.drawImage(vid,-x-dw,-y-dh,dw,dh);
+    ctx.save();ctx.translate(cW,cH);ctx.rotate(Math.PI);
+    ctx.drawImage(vid,-(cW-dw)/2-dw,-(cH-dh)/2-dh,dw,dh);ctx.restore();
    } else {
-    ctx.drawImage(vid,x,y,dw,dh);
+    ctx.save();ctx.translate(cW/2,cH/2);ctx.rotate(rotation*Math.PI/180);
+    ctx.drawImage(vid,-dw/2,-dh/2,dw,dh);ctx.restore();
    }
-   ctx.restore();
   } else {
-   const scale=Math.min(canvasW/curH,canvasH/curW);
-   const dw=curW*scale,dh=curH*scale;
-   ctx.save();
-   ctx.translate(canvasW/2,canvasH/2);
-   ctx.rotate(rotation*Math.PI/180);
-   ctx.drawImage(vid,-dw/2,-dh/2,dw,dh);
-   ctx.restore();
+   slots.forEach((slot,i)=>{
+    const vid=document.getElementById('vid-'+slot);
+    if(!vid||!vid.videoWidth)return;
+    const r=cellRect(i,slots.length);
+    const sc=Math.min(r.w/vid.videoWidth,r.h/vid.videoHeight);
+    const dw=vid.videoWidth*sc,dh=vid.videoHeight*sc;
+    ctx.drawImage(vid,r.x+(r.w-dw)/2,r.y+(r.h-dh)/2,dw,dh);
+   });
   }
   recRafId=requestAnimationFrame(drawFrame);
  }
  drawFrame();
 
  const canvasStream=recCanvas.captureStream(30);
- vid.srcObject.getAudioTracks().forEach(t=>canvasStream.addTrack(t));
+ const fv=document.getElementById('vid-'+slots[0]);
+ if(fv?.srcObject)fv.srcObject.getAudioTracks().forEach(t=>canvasStream.addTrack(t));
  const chosen=pickMime();recExt=chosen.ext;
  mr=new MediaRecorder(canvasStream,chosen.mime?{mimeType:chosen.mime}:{});
  mr.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};
  mr.onstop=()=>{if(recRafId)cancelAnimationFrame(recRafId);recRafId=null;recCanvas=null;saveRec();};
  mr.start(1000);recSecs=0;
  recInt=setInterval(()=>{recSecs++;const m=String(Math.floor(recSecs/60)).padStart(2,'0'),s=String(recSecs%60).padStart(2,'0');document.getElementById('recTimer').textContent=m+':'+s;},1000);
- document.getElementById('recordBtn').textContent='⏹ Cam '+slot.replace('cam','');
+ const lbl=slots.length>1?'⏹ Split ('+slots.length+'×)':'⏹ Cam '+slots[0].replace('cam','');
+ document.getElementById('recordBtn').textContent=lbl;
  document.getElementById('recordBtn').classList.add('active');
 }
 
@@ -427,7 +437,7 @@ function saveRec(){
  document.body.appendChild(a);a.click();document.body.removeChild(a);
  setTimeout(()=>URL.revokeObjectURL(url),5000);chunks=[];
  const n=document.getElementById('saveNotice');
- n.textContent='✅ Cam '+slotNum+' gespeichert (.'+recExt+')';
+ n.textContent='✅ Gespeichert (.'+recExt+')';
  n.classList.add('show');setTimeout(()=>n.classList.remove('show'),3000);
 }
 
@@ -462,3 +472,4 @@ function toggleFullscreen(){const el=document.getElementById('videoWrap');if(!do
 </script>
 </body>
 </html>
+
