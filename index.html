@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Babyphone</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, sans-serif; background: #0d0d0f; color: #f0f0f0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; gap: 20px; }
+    .icon { font-size: 72px; }
+    h1 { font-size: 30px; font-weight: 700; }
+    p { font-size: 15px; color: #888; text-align: center; max-width: 320px; line-height: 1.5; }
+    .cards { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 360px; margin-top: 8px; }
+    a.card { display: flex; align-items: center; gap: 18px; background: #1c1c1e; border-radius: 18px; padding: 22px 24px; text-decoration: none; color: #fff; border: 1.5px solid #2c2c2e; }
+    .card-icon { font-size: 36px; }
+    .card-text h2 { font-size: 18px; font-weight: 600; }
+    .card-text p { font-size: 13px; color: #888; margin-top: 3px; text-align: left; }
+    .tag { margin-left: auto; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 100px; white-space: nowrap; }
+    .tag.iphone { background: #1a3320; color: #4ade80; }
+    .tag.pc { background: #1a2540; color: #60a5fa; }
+    .footer { font-size: 12px; color: #333; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div class="icon">&#x1F37C;</div>
+  <h1>Babyphone</h1>
+  <p>Waehle das richtige Geraet</p>
+  <div class="cards">
+    <a class="card" href="/kamera.html">
+      <div class="card-icon">&#x1F4F1;</div>
+      <div class="card-text"><h2>Kamera</h2><p>iPhone ins Kinderzimmer stellen</p></div>
+      <span class="tag iphone">iPhone</span>
+    </a>
+    <a class="card" href="/viewer.html">
+      <div class="card-icon">&#x1F4FA;</div>
+      <div class="card-text"><h2>Viewer</h2><p>Kamera vom Computer beobachten</p></div>
+      <span class="tag pc">Computer</span>
+    </a>
+  </div>
+  <p class="footer">Peer-to-Peer - Kein Server - Privat</p>
+</body>
+</html>
