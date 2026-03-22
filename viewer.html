@@ -30,6 +30,9 @@
     .btn { background: rgba(255,255,255,.12); border: none; border-radius: 10px; color: #fff; font-size: 14px; font-weight: 500; padding: 10px 16px; cursor: pointer; backdrop-filter: blur(8px); transition: background .2s; white-space: nowrap; }
     .btn:hover { background: rgba(255,255,255,.2); }
     .btn.danger { color: #f87171; }
+    .btn.rec { color: #f87171; }
+    .btn.rec.active { background: rgba(248,113,113,.25); color: #f87171; animation: recpulse 1.5s infinite; }
+    @keyframes recpulse { 0%,100%{opacity:1} 50%{opacity:.6} }
     #connectScreen { background: #1c1c1e; border-radius: 20px; padding: 40px 36px; width: 100%; max-width: 400px; display: flex; flex-direction: column; align-items: center; gap: 22px; margin: 24px; }
     .icon { font-size: 60px; }
     h1 { font-size: 26px; font-weight: 700; }
@@ -38,6 +41,9 @@
     #connectBtn:hover { opacity: .9; }
     #connectBtn:disabled { background: #2c2c2e; color: #555; cursor: default; }
     .info { background: #1a2540; border: 1px solid #2a3f6a; border-radius: 12px; padding: 14px 18px; font-size: 13px; color: #93c5fd; width: 100%; line-height: 1.6; text-align: center; }
+    #saveNotice { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); background: rgba(74,222,128,.2); border: 1px solid rgba(74,222,128,.5); border-radius: 100px; padding: 8px 20px; font-size: 13px; color: #4ade80; white-space: nowrap; opacity: 0; transition: opacity .4s; pointer-events: none; }
+    #saveNotice.show { opacity: 1; }
+    #recTimer { font-size: 12px; color: #f87171; font-variant-numeric: tabular-nums; }
   </style>
 </head>
 <body>
@@ -48,80 +54,154 @@
     <button id="connectBtn" onclick="startConnect()">&#x1F534; Live verbinden</button>
     <div class="info">&#x1F4F1; iPhone muss geoeffnet sein.<br>Sobald du verbindest, erscheint das Bild.</div>
   </div>
+
   <div id="videoWrap">
     <video id="remoteVideo" autoplay playsinline></video>
-    <div id="videoOverlay"><div class="spinner"></div><div id="overlayText">Verbinde mit iPhone...</div></div>
+    <div id="videoOverlay">
+      <div class="spinner"></div>
+      <div id="overlayText">Verbinde mit iPhone...</div>
+    </div>
     <div class="video-bar">
       <div class="badge"><div class="dot" id="dot"></div><span id="statusText">Verbinde...</span></div>
       <button class="btn danger" onclick="disconnect()">&#x2715; Trennen</button>
     </div>
     <div class="video-bottom">
       <div class="vol-wrap"><span>&#x1F507;</span><input type="range" id="volume" min="0" max="1" step="0.05" value="1" oninput="setVolume(this.value)"><span>&#x1F50A;</span></div>
+      <span id="recTimer"></span>
+      <button class="btn rec" id="recordBtn" onclick="toggleRecording()" style="display:none">&#x23FA; Aufnehmen</button>
       <button class="btn" onclick="toggleFullscreen()">&#x26F6; Vollbild</button>
     </div>
+    <div id="saveNotice">&#x2705; Aufnahme gespeichert</div>
   </div>
-<script>
-  const CAM_PEER = 'babyphone-cam--rwe4v2x0';
-  let peer = null, currentCall = null, retryTimer = null, hasStream = false, retryCount = 0;
 
-  function startConnect() {
-    document.getElementById('connectBtn').disabled = true;
-    document.getElementById('connectBtn').textContent = 'Verbinde...';
-    document.getElementById('connectScreen').style.display = 'none';
-    document.getElementById('videoWrap').classList.add('visible');
-    initPeer();
-  }
+  <script>
+    const CAM_PEER = 'babyphone-cam--rwe4v2x0';
+    let peer = null, currentCall = null, retryTimer = null, hasStream = false, retryCount = 0;
+    let mediaRecorder = null, recordedChunks = [], recTimerInterval = null, recSeconds = 0;
 
-  function initPeer() {
-    if (peer) { try { peer.destroy(); } catch(e){} }
-    peer = new Peer({ config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } });
-    peer.on('open', () => callPhone());
-    peer.on('error', err => { setOverlay('Fehler - versuche erneut...'); setStatus('red', err.type); scheduleRetry(); });
-    peer.on('disconnected', () => { setStatus('orange', 'Unterbrochen'); try { peer.reconnect(); } catch(e) { initPeer(); } });
-  }
+    function startConnect() {
+      document.getElementById('connectBtn').disabled = true;
+      document.getElementById('connectBtn').textContent = 'Verbinde...';
+      document.getElementById('connectScreen').style.display = 'none';
+      document.getElementById('videoWrap').classList.add('visible');
+      initPeer();
+    }
 
-  function callPhone() {
-    clearTimer(); setOverlay('Verbinde mit iPhone...'); setStatus('orange', 'Verbindet...'); hasStream = false;
-    let emptyStream;
-    try { const ctx = new AudioContext(); emptyStream = ctx.createMediaStreamDestination().stream; } catch(e) { const c = document.createElement('canvas'); c.width = c.height = 1; emptyStream = c.captureStream(0); }
-    const call = peer.call(CAM_PEER, emptyStream);
-    currentCall = call;
-    call.on('stream', remote => {
-      hasStream = true; retryCount = 0;
-      const v = document.getElementById('remoteVideo'); v.srcObject = remote; v.play().catch(() => {});
-      hideOverlay(); setStatus('green', 'Live');
-    });
-    call.on('close', () => { hasStream = false; setOverlay('Verbindung unterbrochen...'); setStatus('orange', 'Unterbrochen'); scheduleRetry(); });
-    call.on('error', () => { hasStream = false; setOverlay('Verbindungsfehler...'); scheduleRetry(); });
-    setTimeout(() => { if (!hasStream) { try { call.close(); } catch(e){} scheduleRetry(); } }, 8000);
-  }
+    function initPeer() {
+      if (peer) { try { peer.destroy(); } catch(e){} }
+      peer = new Peer({ config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } });
+      peer.on('open', () => callPhone());
+      peer.on('error', err => { setOverlay('Fehler - versuche erneut...'); setStatus('red', err.type); scheduleRetry(); });
+      peer.on('disconnected', () => { setStatus('orange', 'Unterbrochen'); try { peer.reconnect(); } catch(e) { initPeer(); } });
+    }
 
-  function scheduleRetry() {
-    clearTimer(); retryCount++;
-    const delay = Math.min(3000 + retryCount * 500, 8000);
-    setOverlay('iPhone nicht erreichbar - Versuch in ' + Math.round(delay/1000) + 's...');
-    retryTimer = setTimeout(() => callPhone(), delay);
-  }
+    function callPhone() {
+      clearTimer();
+      setOverlay('Verbinde mit iPhone...');
+      setStatus('orange', 'Verbindet...');
+      hasStream = false;
+      let emptyStream;
+      try { const ctx = new AudioContext(); emptyStream = ctx.createMediaStreamDestination().stream; }
+      catch(e) { const c = document.createElement('canvas'); c.width = c.height = 1; emptyStream = c.captureStream(0); }
+      const call = peer.call(CAM_PEER, emptyStream);
+      currentCall = call;
+      call.on('stream', remote => {
+        hasStream = true; retryCount = 0;
+        const v = document.getElementById('remoteVideo');
+        v.srcObject = remote;
+        v.play().catch(() => {});
+        hideOverlay();
+        setStatus('green', 'Live');
+        document.getElementById('recordBtn').style.display = '';
+      });
+      call.on('close', () => { hasStream = false; stopRecordingIfActive(); setOverlay('Verbindung unterbrochen...'); setStatus('orange', 'Unterbrochen'); scheduleRetry(); });
+      call.on('error', () => { hasStream = false; stopRecordingIfActive(); setOverlay('Verbindungsfehler...'); scheduleRetry(); });
+      setTimeout(() => { if (!hasStream) { try { call.close(); } catch(e){} scheduleRetry(); } }, 8000);
+    }
 
-  function clearTimer() { if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; } }
+    function scheduleRetry() {
+      clearTimer();
+      retryCount++;
+      const delay = Math.min(3000 + retryCount * 500, 8000);
+      setOverlay('iPhone nicht erreichbar - Versuch in ' + Math.round(delay/1000) + 's...');
+      retryTimer = setTimeout(() => callPhone(), delay);
+    }
 
-  function disconnect() {
-    clearTimer();
-    if (currentCall) { try { currentCall.close(); } catch(e){} currentCall = null; }
-    if (peer) { try { peer.destroy(); } catch(e){} peer = null; }
-    document.getElementById('remoteVideo').srcObject = null;
-    document.getElementById('videoWrap').classList.remove('visible');
-    const btn = document.getElementById('connectBtn');
-    btn.disabled = false; btn.textContent = 'Live verbinden';
-    document.getElementById('connectScreen').style.display = 'flex';
-    retryCount = 0;
-  }
+    function clearTimer() { if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; } }
 
-  function setVolume(v) { const vid = document.getElementById('remoteVideo'); vid.volume = +v; vid.muted = +v === 0; }
-  function toggleFullscreen() { const el = document.getElementById('videoWrap'); if (!document.fullscreenElement) el.requestFullscreen().catch(()=>{}); else document.exitFullscreen(); }
-  function setOverlay(text) { document.getElementById('videoOverlay').classList.remove('hidden'); document.getElementById('overlayText').textContent = text; }
-  function hideOverlay() { document.getElementById('videoOverlay').classList.add('hidden'); }
-  function setStatus(color, text) { document.getElementById('dot').className = 'dot ' + color; document.getElementById('statusText').textContent = text; }
-</script>
+    function disconnect() {
+      clearTimer(); stopRecordingIfActive();
+      if (currentCall) { try { currentCall.close(); } catch(e){} currentCall = null; }
+      if (peer) { try { peer.destroy(); } catch(e){} peer = null; }
+      document.getElementById('remoteVideo').srcObject = null;
+      document.getElementById('videoWrap').classList.remove('visible');
+      document.getElementById('recordBtn').style.display = 'none';
+      const btn = document.getElementById('connectBtn');
+      btn.disabled = false; btn.textContent = 'Live verbinden';
+      document.getElementById('connectScreen').style.display = 'flex';
+      retryCount = 0;
+    }
+
+    // ── Recording ──────────────────────────────────────────────
+    function toggleRecording() {
+      if (mediaRecorder && mediaRecorder.state === 'recording') stopRecording();
+      else startRecording();
+    }
+
+    function startRecording() {
+      const stream = document.getElementById('remoteVideo').srcObject;
+      if (!stream) return;
+      recordedChunks = [];
+      const mimeTypes = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4'];
+      let opts = {};
+      for (const m of mimeTypes) { if (MediaRecorder.isTypeSupported(m)) { opts = { mimeType: m }; break; } }
+      mediaRecorder = new MediaRecorder(stream, opts);
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+      mediaRecorder.onstop = saveRecording;
+      mediaRecorder.start(1000);
+      recSeconds = 0;
+      recTimerInterval = setInterval(() => {
+        recSeconds++;
+        const m = String(Math.floor(recSeconds/60)).padStart(2,'0');
+        const s = String(recSeconds%60).padStart(2,'0');
+        document.getElementById('recTimer').textContent = m + ':' + s;
+      }, 1000);
+      const btn = document.getElementById('recordBtn');
+      btn.textContent = '\u23F9 Stoppen';
+      btn.classList.add('active');
+    }
+
+    function stopRecording() {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+      clearInterval(recTimerInterval);
+      document.getElementById('recTimer').textContent = '';
+      const btn = document.getElementById('recordBtn');
+      btn.textContent = '\u23FA Aufnehmen';
+      btn.classList.remove('active');
+    }
+
+    function stopRecordingIfActive() { if (mediaRecorder && mediaRecorder.state === 'recording') stopRecording(); }
+
+    function saveRecording() {
+      if (!recordedChunks.length) return;
+      const blob = new Blob(recordedChunks, { type: recordedChunks[0]?.type || 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().slice(0,19).replace('T','_').replace(/:/g,'-');
+      a.href = url; a.download = 'babyphone-' + ts + '.webm';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      recordedChunks = [];
+      const n = document.getElementById('saveNotice');
+      n.classList.add('show'); setTimeout(() => n.classList.remove('show'), 3000);
+    }
+
+    // ── UI helpers ─────────────────────────────────────────────
+    function setVolume(v) { const vid = document.getElementById('remoteVideo'); vid.volume = +v; vid.muted = +v === 0; }
+    function toggleFullscreen() { const el = document.getElementById('videoWrap'); if (!document.fullscreenElement) el.requestFullscreen().catch(()=>{}); else document.exitFullscreen(); }
+    function setOverlay(text) { document.getElementById('videoOverlay').classList.remove('hidden'); document.getElementById('overlayText').textContent = text; }
+    function hideOverlay() { document.getElementById('videoOverlay').classList.add('hidden'); }
+    function setStatus(color, text) { document.getElementById('dot').className = 'dot ' + color; document.getElementById('statusText').textContent = text; }
+  </script>
 </body>
 </html>
