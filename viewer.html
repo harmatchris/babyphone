@@ -9,6 +9,8 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0d0d0f;color:#f0f0f0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+
+/* ── Connect Screen ── */
 #connectScreen{background:#1c1c1e;border-radius:20px;padding:40px 36px;width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center;gap:22px;margin:24px}
 .icon{font-size:60px}
 h1{font-size:26px;font-weight:700}
@@ -18,8 +20,12 @@ h1{font-size:26px;font-weight:700}
 #connectBtn:disabled{background:#2c2c2e;color:#555;cursor:default}
 .info{background:#1a2540;border:1px solid #2a3f6a;border-radius:12px;padding:14px 18px;font-size:13px;color:#93c5fd;width:100%;line-height:1.8;text-align:center}
 .info code{background:rgba(255,255,255,.1);border-radius:6px;padding:1px 6px;font-family:monospace;font-size:12px}
+
+/* ── Video Wrap ── */
 #videoWrap{position:fixed;inset:0;background:#111;display:none;flex-direction:column}
 #videoWrap.visible{display:flex}
+
+/* ── Top Bar ── */
 #topBar{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(0,0,0,.85);gap:8px;z-index:20;border-bottom:1px solid rgba(255,255,255,.07)}
 #modeBar{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
 .mBtn{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);border-radius:100px;color:#bbb;font-size:12px;font-weight:600;padding:5px 13px;cursor:pointer;transition:all .15s;white-space:nowrap}
@@ -33,19 +39,27 @@ h1{font-size:26px;font-weight:700}
 .btn.rec{color:#f87171}
 .btn.rec.active{background:rgba(248,113,113,.22);animation:recpulse 1.5s infinite}
 @keyframes recpulse{0%,100%{opacity:1}50%{opacity:.55}}
+
+/* ── Video Grid ── */
 #videoGrid{flex:1;min-height:0;display:grid;gap:2px;background:#000}
 #videoGrid.layout-1{grid-template-columns:1fr;grid-template-rows:1fr}
 #videoGrid.layout-2{grid-template-columns:1fr 1fr;grid-template-rows:1fr}
 #videoGrid.layout-3{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
 #videoGrid.layout-3 .vidCell:nth-child(3){grid-column:1 / -1}
+
+/* ── Video Cell ── */
 .vidCell{position:relative;background:#0a0a0a;overflow:hidden;cursor:pointer;min-height:0}
 .vidCell.solo{cursor:default}
 .vidCell video{width:100%;height:100%;object-fit:contain;display:block}
+
+/* waiting overlay */
 .cellWait{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(0,0,0,.75);pointer-events:none;transition:opacity .3s}
 .cellWait.hidden{opacity:0}
 .spinner{width:28px;height:28px;border:3px solid #333;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .waitText{font-size:12px;color:#777}
+
+/* cell top label */
 .cellTop{position:absolute;top:8px;left:8px;display:flex;align-items:center;gap:5px;background:rgba(0,0,0,.55);border-radius:100px;padding:3px 9px 3px 5px;pointer-events:none;z-index:5}
 .dot{width:7px;height:7px;border-radius:50%;background:#444;flex-shrink:0}
 .dot.green{background:#4ade80;animation:blink 2s infinite}
@@ -53,66 +67,90 @@ h1{font-size:26px;font-weight:700}
 .dot.red{background:#f87171}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 .cellLabel{font-size:11px;color:#ddd;font-weight:600}
+
+/* cell cam buttons — always at bottom of cell */
 .cellCamBar{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:4px;padding:6px 8px 8px;background:linear-gradient(to top,rgba(0,0,0,.65),transparent);flex-wrap:wrap;opacity:0;transition:opacity .2s;z-index:5}
 .vidCell:hover .cellCamBar{opacity:1}
 .vidCell.solo .cellCamBar{opacity:1}
 .cBtn{background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.25);border-radius:100px;color:#fff;font-size:11px;font-weight:600;padding:4px 10px;cursor:pointer;transition:all .15s}
 .cBtn:hover{background:rgba(255,255,255,.18)}
 .cBtn.active{background:rgba(255,220,0,.9);color:#000;border-color:transparent}
+
+/* ── Bottom Bar ── */
 #bottomBar{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:8px 14px;background:rgba(0,0,0,.82);border-top:1px solid rgba(255,255,255,.07);flex-wrap:wrap}
 .vol-wrap{display:flex;align-items:center;gap:7px;flex:1;min-width:100px}
 .vol-wrap span{font-size:16px}
 input[type="range"]{flex:1;accent-color:#3b82f6;cursor:pointer}
 #recTimer{font-size:12px;color:#f87171;font-variant-numeric:tabular-nums;min-width:36px}
+
+/* ── Save notice ── */
 #saveNotice{position:absolute;top:56px;left:50%;transform:translateX(-50%);background:rgba(74,222,128,.18);border:1px solid rgba(74,222,128,.45);border-radius:100px;padding:7px 18px;font-size:12px;color:#4ade80;white-space:nowrap;opacity:0;transition:opacity .4s;pointer-events:none;z-index:30}
 #saveNotice.show{opacity:1}
-.cellHint{position:absolute;bottom:50%;left:50%;transform:translate(-50%,50%);font-size:11px;color:rgba(255,255,255,.22);pointer-events:none;white-space:nowrap}
+
+/* ── click-hint in splitscreen ── */
+.cellHint{position:absolute;bottom:50%;left:50%;transform:translate(-50%,50%);font-size:11px;color:rgba(255,255,255,.25);pointer-events:none;white-space:nowrap;transition:opacity .2s}
 .vidCell.solo .cellHint,.vidCell:hover .cellHint{opacity:0}
 </style>
 </head>
 <body>
+
+<!-- Connect Screen -->
 <div id="connectScreen">
- <div class="icon">&#128250;</div>
+ <div class="icon">📺</div>
  <h1>Babyphone</h1>
  <p class="sub">Multi-Kamera Viewer</p>
- <button id="connectBtn" onclick="startConnect()">&#128308; Live verbinden</button>
+ <button id="connectBtn" onclick="startConnect()">🔴 Live verbinden</button>
  <div class="info">
-  &#128241; iPhone URLs:<br>
+  📱 iPhone URLs:<br>
   <code>kamera.html?cam=1</code> &nbsp; <code>?cam=2</code> &nbsp; <code>?cam=3</code><br>
   Bis zu 3 Kameras gleichzeitig im Splitscreen.
  </div>
 </div>
+
+<!-- Video Area -->
 <div id="videoWrap">
+ <!-- Top bar -->
  <div id="topBar">
   <div id="modeBar">
-   <button class="mBtn active" data-slot="all" onclick="setViewMode('all')">&#8862; Alle</button>
+   <button class="mBtn active" data-slot="all" onclick="setViewMode('all')">⊞ Alle</button>
    <button class="mBtn offline" id="mBtn-cam1" data-slot="cam1" onclick="setViewMode('cam1')">Cam 1</button>
    <button class="mBtn offline" id="mBtn-cam2" data-slot="cam2" onclick="setViewMode('cam2')">Cam 2</button>
    <button class="mBtn offline" id="mBtn-cam3" data-slot="cam3" onclick="setViewMode('cam3')">Cam 3</button>
   </div>
   <div class="topRight">
-   <button class="btn" onclick="toggleFullscreen()">&#9974;</button>
-   <button class="btn danger" onclick="disconnect()">&#10005; Trennen</button>
+   <button class="btn" onclick="toggleFullscreen()">⛶</button>
+   <button class="btn danger" onclick="disconnect()">✕ Trennen</button>
   </div>
  </div>
+
+ <!-- Grid (cells injected by JS) -->
  <div id="videoGrid" class="layout-3"></div>
+
+ <!-- Bottom bar -->
  <div id="bottomBar">
-  <div class="vol-wrap"><span>&#128263;</span><input type="range" id="volume" min="0" max="1" step="0.05" value="1" oninput="setVolume(this.value)"><span>&#128266;</span></div>
+  <div class="vol-wrap"><span>🔇</span><input type="range" id="volume" min="0" max="1" step="0.05" value="1" oninput="setVolume(this.value)"><span>🔊</span></div>
   <span id="recTimer"></span>
-  <button class="btn rec" id="recordBtn" onclick="toggleRec()" style="display:none">&#9210; Aufnehmen</button>
-  <button class="btn" id="rotateBtn" onclick="rotateCW()" style="display:none" title="Bild drehen">&#8635; Drehen</button>
+  <button class="btn rec" id="recordBtn" onclick="toggleRec()">⏺ Aufnehmen</button>
+  <button class="btn" id="rotateBtn" onclick="rotateCW()" style="display:none" title="Bild drehen">↻ Drehen</button>
  </div>
- <div id="saveNotice">&#9989; Gespeichert</div>
+
+ <div id="saveNotice">✅ Gespeichert</div>
 </div>
+
 <script>
+/* ── Firebase ───────────────────────────────────────────── */
 const FB={apiKey:"AIzaSyBQPi4f2qWg3xA65hLL7IpxOiq3kzVk5ls",authDomain:"ninja-hq-chris.firebaseapp.com",databaseURL:"https://ninja-hq-chris-default-rtdb.firebaseio.com",projectId:"ninja-hq-chris",storageBucket:"ninja-hq-chris.firebasestorage.app",messagingSenderId:"811964168411",appId:"1:811964168411:web:f49a87b1bdcb6aaebf74fe"};
 firebase.initializeApp(FB);
 const db=firebase.database();
 const ICE={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},{urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'},{urls:'turn:openrelay.metered.ca:443?transport=tcp',username:'openrelayproject',credential:'openrelayproject'}]};
+
+/* ── State ──────────────────────────────────────────────── */
 const SLOTS=['cam1','cam2','cam3'];
-const peers={};
+const peers={};   // {cam1:{ref,pc,iceBuf,connected,rotation}, cam2:..., cam3:...}
 let viewMode='all';
 let mr=null,chunks=[],recSecs=0,recInt=null,recExt='mp4',recCanvas=null,recRafId=null,recSlot=null;
+
+/* ── Connect ────────────────────────────────────────────── */
 function startConnect(){
  document.getElementById('connectBtn').disabled=true;
  document.getElementById('connectBtn').textContent='Verbinde...';
@@ -121,147 +159,243 @@ function startConnect(){
  SLOTS.forEach(slot=>initSlot(slot));
  setViewMode('all');
 }
+
 function initSlot(slot){
  const ref=db.ref('babyphone/sessions/'+slot);
  peers[slot]={ref,pc:null,iceBuf:[],connected:false,rotation:0};
+
+ // Create cell
  const slotNum=slot.replace('cam','');
  const cell=document.createElement('div');
- cell.className='vidCell';cell.id='cell-'+slot;
- cell.innerHTML='<video id="vid-'+slot+'" autoplay playsinline></video>'
-  +'<div class="cellWait" id="wait-'+slot+'"><div class="spinner"></div><div class="waitText">Cam '+slotNum+' \u2013 warte...</div></div>'
-  +'<div class="cellTop"><div class="dot" id="dot-'+slot+'"></div><span class="cellLabel">Cam '+slotNum+'</span></div>'
-  +'<div class="cellCamBar" id="camBar-'+slot+'"></div>'
-  +'<div class="cellHint">Klicken zum Vergr\u00f6\u00dfern</div>';
- cell.addEventListener('click',()=>{if(viewMode==='all')setViewMode(slot);});
+ cell.className='vidCell';
+ cell.id='cell-'+slot;
+ cell.innerHTML=`
+  <video id="vid-${slot}" autoplay playsinline></video>
+  <div class="cellWait" id="wait-${slot}"><div class="spinner"></div><div class="waitText">Cam ${slotNum} – warte...</div></div>
+  <div class="cellTop"><div class="dot" id="dot-${slot}"></div><span class="cellLabel">Cam ${slotNum}</span></div>
+  <div class="cellCamBar" id="camBar-${slot}"></div>
+  <div class="cellHint">Klicken zum Vergrößern</div>
+ `;
+ cell.addEventListener('click',()=>{ if(viewMode==='all') setViewMode(slot); });
  document.getElementById('videoGrid').appendChild(cell);
- ref.child('offer').on('value',snap=>{if(!snap.val())return;connectSlot(slot,snap.val());});
- ref.child('caps').on('value',snap=>{const d=snap.val();if(!d||!d.cams)return;renderCamBtns(slot,d.cams,d.activeCam);});
+
+ // Listen for offer
+ ref.child('offer').on('value',snap=>{
+  if(!snap.val())return;
+  connectSlot(slot,snap.val());
+ });
+
+ // Listen for caps (camera lens info)
+ ref.child('caps').on('value',snap=>{
+  const d=snap.val();if(!d||!d.cams)return;
+  renderCamBtns(slot,d.cams,d.activeCam);
+ });
 }
+
 async function connectSlot(slot,offer){
  const p=peers[slot];
  if(p.pc){try{p.pc.close();}catch(e){}p.pc=null;}
  await p.ref.child('answer').remove();
  await p.ref.child('vi').remove();
- p.iceBuf=[];setDot(slot,'orange');
+ p.iceBuf=[];
+ setDot(slot,'orange');
+
  p.pc=new RTCPeerConnection(ICE);
+
  p.pc.ontrack=e=>{
   const vid=document.getElementById('vid-'+slot);
-  vid.srcObject=e.streams[0];vid.volume=+document.getElementById('volume').value;vid.play().catch(()=>{});
-  hideWait(slot);setDot(slot,'green');p.connected=true;
+  vid.srcObject=e.streams[0];
+  vid.volume=+document.getElementById('volume').value;
+  vid.play().catch(()=>{});
+  hideWait(slot);
+  setDot(slot,'green');
+  p.connected=true;
   document.getElementById('mBtn-'+slot).classList.remove('offline');
   updateControls();
  };
+
  p.pc.onicecandidate=e=>{if(e.candidate)p.ref.child('vi').push(e.candidate.toJSON());};
+
  p.pc.onconnectionstatechange=()=>{
   const st=p.pc.connectionState;
   if(st==='connected'){setDot(slot,'green');hideWait(slot);}
   else if(st==='connecting'){setDot(slot,'orange');}
   else if(['failed','disconnected','closed'].includes(st)){
-   p.connected=false;setDot(slot,'red');
+   p.connected=false;
+   setDot(slot,'red');
    document.getElementById('vid-'+slot).srcObject=null;
-   showWait(slot,'Cam '+slot.replace('cam','')+' \u2013 unterbrochen...');
+   showWait(slot,'Cam '+slot.replace('cam','')+' – unterbrochen...');
    if(recSlot===slot&&mr&&mr.state!=='inactive')stopRec();
    updateControls();
   }
  };
+
  await p.pc.setRemoteDescription(new RTCSessionDescription(offer));
- const answer=await p.pc.createAnswer();await p.pc.setLocalDescription(answer);
+ const answer=await p.pc.createAnswer();
+ await p.pc.setLocalDescription(answer);
  await p.ref.child('answer').set({sdp:answer.sdp,type:answer.type});
+
  p.ref.child('ci').on('child_added',snap=>{
   const c=snap.val();if(!c)return;
-  if(p.pc&&p.pc.remoteDescription)p.pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{});else p.iceBuf.push(c);
+  if(p.pc&&p.pc.remoteDescription)p.pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{});
+  else p.iceBuf.push(c);
  });
  p.pc.addEventListener('signalingstatechange',()=>{
-  if(p.pc&&p.pc.signalingState==='stable'){p.iceBuf.forEach(c=>p.pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}));p.iceBuf=[];}
+  if(p.pc&&p.pc.signalingState==='stable'){
+   p.iceBuf.forEach(c=>p.pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}));
+   p.iceBuf=[];
+  }
  });
 }
+
+/* ── Camera lens buttons ────────────────────────────────── */
 function renderCamBtns(slot,cams,active){
- const bar=document.getElementById('camBar-'+slot);if(!bar)return;bar.innerHTML='';
+ const bar=document.getElementById('camBar-'+slot);
+ if(!bar)return;
+ bar.innerHTML='';
  for(const key of ['0.5','1','2','5','front']){
   if(!cams.includes(key))continue;
   const b=document.createElement('button');
-  b.className='cBtn'+(key===active?' active':'');b.id='cBtn-'+slot+'-'+key;
-  b.textContent=key==='front'?'\u21B6 Front':key+'\u00D7';
+  b.className='cBtn'+(key===active?' active':'');
+  b.id='cBtn-'+slot+'-'+key;
+  b.textContent=key==='front'?'↶ Front':key+'×';
   b.onclick=e=>{e.stopPropagation();sendCamCmd(slot,key);};
   bar.appendChild(b);
  }
 }
+
 function sendCamCmd(slot,target){
  peers[slot].ref.child('cmd').set({action:'cam',target,ts:Date.now()});
  document.querySelectorAll('[id^="cBtn-'+slot+'-"]').forEach(b=>b.classList.remove('active'));
- const btn=document.getElementById('cBtn-'+slot+'-'+target);if(btn)btn.classList.add('active');
+ const btn=document.getElementById('cBtn-'+slot+'-'+target);
+ if(btn)btn.classList.add('active');
 }
+
+/* ── View Mode ──────────────────────────────────────────── */
 function setViewMode(mode){
  viewMode=mode;
- document.querySelectorAll('.mBtn').forEach(b=>{b.classList.toggle('active',b.dataset.slot===mode);});
+
+ // update mode buttons
+ document.querySelectorAll('.mBtn').forEach(b=>{
+  b.classList.toggle('active',b.dataset.slot===mode);
+ });
+
  const grid=document.getElementById('videoGrid');
+
  if(mode==='all'){
-  SLOTS.forEach(slot=>{const cell=document.getElementById('cell-'+slot);cell.style.display='';cell.classList.remove('solo');});
+  SLOTS.forEach(slot=>{
+   const cell=document.getElementById('cell-'+slot);
+   cell.style.display='';
+   cell.classList.remove('solo');
+  });
   grid.className='layout-3';
  } else {
-  SLOTS.forEach(slot=>{const cell=document.getElementById('cell-'+slot);if(slot===mode){cell.style.display='';cell.classList.add('solo');}else{cell.style.display='none';}});
-  grid.className='layout-1';applyVideoTransform(mode);
+  SLOTS.forEach(slot=>{
+   const cell=document.getElementById('cell-'+slot);
+   if(slot===mode){
+    cell.style.display='';
+    cell.classList.add('solo');
+   } else {
+    cell.style.display='none';
+   }
+  });
+  grid.className='layout-1';
+  applyVideoTransform(mode);
  }
  updateControls();
 }
+
+/* ── Controls visibility ────────────────────────────────── */
 function updateControls(){
  const single=viewMode!=='all';
- document.getElementById('recordBtn').style.display=single?'':'none';
+ document.getElementById('recordBtn').style.display=''; // always visible
  document.getElementById('rotateBtn').style.display=single?'':'none';
- if(!single&&mr&&mr.state!=='inactive')stopRec();
- recSlot=single?viewMode:null;
+ // Update recSlot only when not actively recording
+ if(single&&(!mr||mr.state!=='recording'))recSlot=viewMode;
 }
+
+/* ── Rotation ───────────────────────────────────────────── */
 function rotateCW(){
  if(viewMode==='all')return;
- const p=peers[viewMode];p.rotation=(p.rotation+90)%360;applyVideoTransform(viewMode);
+ const p=peers[viewMode];
+ p.rotation=(p.rotation+90)%360;
+ applyVideoTransform(viewMode);
 }
+
 function applyVideoTransform(slot){
- const vid=document.getElementById('vid-'+slot);const rotation=peers[slot]?.rotation||0;
+ const vid=document.getElementById('vid-'+slot);
+ const rotation=peers[slot]?.rotation||0;
  if(rotation===0||rotation===180){
-  vid.style.position='';vid.style.top='';vid.style.left='';vid.style.width='100%';vid.style.height='100%';
+  vid.style.position='';vid.style.top='';vid.style.left='';
+  vid.style.width='100%';vid.style.height='100%';
   vid.style.transform=rotation===180?'rotate(180deg)':'';
  } else {
-  const cell=document.getElementById('cell-'+slot);const cw=cell.clientWidth,ch=cell.clientHeight;
-  vid.style.position='absolute';vid.style.top='50%';vid.style.left='50%';
+  const cell=document.getElementById('cell-'+slot);
+  const cw=cell.clientWidth,ch=cell.clientHeight;
+  vid.style.position='absolute';
+  vid.style.top='50%';vid.style.left='50%';
   vid.style.width=ch+'px';vid.style.height=cw+'px';
-  vid.style.transform='translate(-50%,-50%) rotate('+rotation+'deg)';
+  vid.style.transform=`translate(-50%,-50%) rotate(${rotation}deg)`;
  }
 }
+
+/* ── Recording (only in single-cam mode) ────────────────── */
 function pickMime(){
  const c=[{mime:'video/mp4;codecs=h264,aac',ext:'mp4'},{mime:'video/mp4;codecs=avc1',ext:'mp4'},{mime:'video/mp4',ext:'mp4'},{mime:'video/webm;codecs=vp9,opus',ext:'webm'},{mime:'video/webm;codecs=vp8,opus',ext:'webm'},{mime:'video/webm',ext:'webm'}];
- for(const x of c)if(MediaRecorder.isTypeSupported(x.mime))return x;return{mime:'',ext:'webm'};
+ for(const x of c)if(MediaRecorder.isTypeSupported(x.mime))return x;
+ return{mime:'',ext:'webm'};
 }
+
 function toggleRec(){if(mr&&mr.state==='recording')stopRec();else startRec();}
+
 function startRec(){
- const slot=viewMode;if(!slot||slot==='all')return;
- const vid=document.getElementById('vid-'+slot);if(!vid.srcObject)return;
+ // In 'all' mode pick first connected cam; in single mode use that cam
+ let slot=(viewMode!=='all')?viewMode:(recSlot||SLOTS.find(s=>peers[s]&&peers[s].connected));
+ if(!slot)return;
+ const vid=document.getElementById('vid-'+slot);
+ if(!vid||!vid.srcObject)return;
  chunks=[];recSlot=slot;
+
  const rotation=peers[slot].rotation;
  const startW=vid.videoWidth||1280,startH=vid.videoHeight||720;
  const swapped=(rotation===90||rotation===270);
- const canvasW=swapped?startH:startW,canvasH=swapped?startW:startH;
- recCanvas=document.createElement('canvas');recCanvas.width=canvasW;recCanvas.height=canvasH;
+ const canvasW=swapped?startH:startW;
+ const canvasH=swapped?startW:startH;
+ recCanvas=document.createElement('canvas');
+ recCanvas.width=canvasW;recCanvas.height=canvasH;
  const ctx=recCanvas.getContext('2d');
+
  function drawFrame(){
   if(!recCanvas)return;
-  ctx.fillStyle='#000';ctx.fillRect(0,0,canvasW,canvasH);
+  ctx.fillStyle='#000';
+  ctx.fillRect(0,0,canvasW,canvasH);
   const curW=vid.videoWidth,curH=vid.videoHeight;
   if(!curW||!curH){recRafId=requestAnimationFrame(drawFrame);return;}
   if(rotation===0||rotation===180){
-   const scale=Math.min(canvasW/curW,canvasH/curH);const dw=curW*scale,dh=curH*scale;
+   const scale=Math.min(canvasW/curW,canvasH/curH);
+   const dw=curW*scale,dh=curH*scale;
    const x=(canvasW-dw)/2,y=(canvasH-dh)/2;
    ctx.save();
-   if(rotation===180){ctx.translate(canvasW,canvasH);ctx.rotate(Math.PI);ctx.drawImage(vid,-x-dw,-y-dh,dw,dh);}
-   else{ctx.drawImage(vid,x,y,dw,dh);}
+   if(rotation===180){
+    ctx.translate(canvasW,canvasH);ctx.rotate(Math.PI);
+    ctx.drawImage(vid,-x-dw,-y-dh,dw,dh);
+   } else {
+    ctx.drawImage(vid,x,y,dw,dh);
+   }
    ctx.restore();
   } else {
-   const scale=Math.min(canvasW/curH,canvasH/curW);const dw=curW*scale,dh=curH*scale;
-   ctx.save();ctx.translate(canvasW/2,canvasH/2);ctx.rotate(rotation*Math.PI/180);
-   ctx.drawImage(vid,-dw/2,-dh/2,dw,dh);ctx.restore();
+   const scale=Math.min(canvasW/curH,canvasH/curW);
+   const dw=curW*scale,dh=curH*scale;
+   ctx.save();
+   ctx.translate(canvasW/2,canvasH/2);
+   ctx.rotate(rotation*Math.PI/180);
+   ctx.drawImage(vid,-dw/2,-dh/2,dw,dh);
+   ctx.restore();
   }
   recRafId=requestAnimationFrame(drawFrame);
  }
  drawFrame();
+
  const canvasStream=recCanvas.captureStream(30);
  vid.srcObject.getAudioTracks().forEach(t=>canvasStream.addTrack(t));
  const chosen=pickMime();recExt=chosen.ext;
@@ -270,36 +404,56 @@ function startRec(){
  mr.onstop=()=>{if(recRafId)cancelAnimationFrame(recRafId);recRafId=null;recCanvas=null;saveRec();};
  mr.start(1000);recSecs=0;
  recInt=setInterval(()=>{recSecs++;const m=String(Math.floor(recSecs/60)).padStart(2,'0'),s=String(recSecs%60).padStart(2,'0');document.getElementById('recTimer').textContent=m+':'+s;},1000);
- document.getElementById('recordBtn').textContent='\u23F9 Stoppen';document.getElementById('recordBtn').classList.add('active');
+ document.getElementById('recordBtn').textContent='⏹ Cam '+slot.replace('cam','');
+ document.getElementById('recordBtn').classList.add('active');
 }
+
 function stopRec(){
- if(mr&&mr.state!=='inactive')mr.stop();clearInterval(recInt);
+ if(mr&&mr.state!=='inactive')mr.stop();
+ clearInterval(recInt);
  document.getElementById('recTimer').textContent='';
- document.getElementById('recordBtn').textContent='\u23FA Aufnehmen';document.getElementById('recordBtn').classList.remove('active');
+ document.getElementById('recordBtn').textContent='⏺ Aufnehmen';
+ document.getElementById('recordBtn').classList.remove('active');
 }
+
 function saveRec(){
  if(!chunks.length)return;
  const blob=new Blob(chunks,{type:chunks[0]?.type||'video/mp4'});
- const url=URL.createObjectURL(blob);const a=document.createElement('a');
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement('a');
  const ts=new Date().toISOString().slice(0,19).replace('T','_').replace(/:/g,'-');
  const slotNum=(recSlot||'cam1').replace('cam','');
  a.href=url;a.download='babyphone-cam'+slotNum+'-'+ts+'.'+recExt;
  document.body.appendChild(a);a.click();document.body.removeChild(a);
  setTimeout(()=>URL.revokeObjectURL(url),5000);chunks=[];
  const n=document.getElementById('saveNotice');
- n.textContent='\u2705 Cam '+slotNum+' gespeichert (.'+recExt+')';n.classList.add('show');setTimeout(()=>n.classList.remove('show'),3000);
+ n.textContent='✅ Cam '+slotNum+' gespeichert (.'+recExt+')';
+ n.classList.add('show');setTimeout(()=>n.classList.remove('show'),3000);
 }
+
+/* ── Disconnect ─────────────────────────────────────────── */
 function disconnect(){
  stopRec();
- SLOTS.forEach(slot=>{const p=peers[slot];if(!p)return;try{p.ref.off();}catch(e){}if(p.pc){try{p.pc.close();}catch(e){}}peers[slot]=null;});
+ SLOTS.forEach(slot=>{
+  const p=peers[slot];if(!p)return;
+  try{p.ref.off();}catch(e){}
+  if(p.pc){try{p.pc.close();}catch(e){}}
+  peers[slot]=null;
+ });
  document.getElementById('videoGrid').innerHTML='';
  document.getElementById('videoWrap').classList.remove('visible');
- document.getElementById('recordBtn').style.display='none';document.getElementById('rotateBtn').style.display='none';
- SLOTS.forEach(slot=>{const b=document.getElementById('mBtn-'+slot);if(b){b.classList.remove('active');b.classList.add('offline');}});
+ document.getElementById('rotateBtn').style.display='none';
+ SLOTS.forEach(slot=>{
+  const b=document.getElementById('mBtn-'+slot);
+  if(b){b.classList.remove('active');b.classList.add('offline');}
+ });
  document.querySelector('[data-slot="all"]').classList.add('active');
- const btn=document.getElementById('connectBtn');btn.disabled=false;btn.textContent='\u{1F534} Live verbinden';
+ const btn=document.getElementById('connectBtn');
+ btn.disabled=false;btn.textContent='🔴 Live verbinden';
  document.getElementById('connectScreen').style.display='flex';
 }
+
+/* ── Helpers ────────────────────────────────────────────── */
 function setDot(slot,color){const d=document.getElementById('dot-'+slot);if(d)d.className='dot '+color;}
 function showWait(slot,text){const w=document.getElementById('wait-'+slot);if(w){w.classList.remove('hidden');w.querySelector('.waitText').textContent=text;}}
 function hideWait(slot){const w=document.getElementById('wait-'+slot);if(w)w.classList.add('hidden');}
