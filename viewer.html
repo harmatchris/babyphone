@@ -147,7 +147,7 @@ const ICE={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l
 const SLOTS=['cam1','cam2','cam3'];
 const peers={};   // {cam1:{ref,pc,iceBuf,connected,rotation}, cam2:..., cam3:...}
 let viewMode='all';
-let mr=null,chunks=[],recSecs=0,recInt=null,recExt='mp4',recCanvas=null,recRafId=null,recSlot=null;
+let mr=null,chunks=[],recSecs=0,recInt=null,recExt='mp4',recCanvas=null,recRafId=null,recSlot=null,recMulti=false;
 
 /* ── Connect ────────────────────────────────────────────── */
 function startConnect(){
@@ -175,7 +175,7 @@ function initSlot(slot){
   <div class="cellCamBar" id="camBar-${slot}"></div>
   <div class="cellHint">Klicken zum Vergrößern</div>
  `;
- cell.addEventListener('click',()=>{ if(viewMode==='all') setViewMode(slot); });
+ cell.addEventListener('click',e=>{ if(e.target.closest&&e.target.closest('.cellCamBar,.cBtn'))return; if(viewMode==='all') setViewMode(slot); });
  document.getElementById('videoGrid').appendChild(cell);
 
  // Listen for offer
@@ -353,7 +353,7 @@ function startRec(){
   ?SLOTS.filter(s=>peers[s]&&peers[s].connected&&document.getElementById('vid-'+s)?.srcObject)
   :(peers[viewMode]?.connected&&document.getElementById('vid-'+viewMode)?.srcObject?[viewMode]:[]);
  if(!slots.length)return;
- chunks=[];recSlot=slots[0];
+ chunks=[];recSlot=slots[0];recMulti=slots.length>1;
 
  const cW=1280,cH=720;
  recCanvas=document.createElement('canvas');
@@ -393,10 +393,13 @@ function startRec(){
   } else {
    slots.forEach((slot,i)=>{
     const vid=document.getElementById('vid-'+slot);
-    if(!vid||!vid.videoWidth)return;
+    if(!vid||!vid.srcObject)return;
+    let vw=vid.videoWidth,vh=vid.videoHeight;
+    if(!vw||!vh){const t=vid.srcObject.getVideoTracks()[0];if(t){const s=t.getSettings();vw=s.width||0;vh=s.height||0;}}
+    if(!vw||!vh)return;
     const r=cellRect(i,slots.length);
-    const sc=Math.min(r.w/vid.videoWidth,r.h/vid.videoHeight);
-    const dw=vid.videoWidth*sc,dh=vid.videoHeight*sc;
+    const sc=Math.min(r.w/vw,r.h/vh);
+    const dw=vw*sc,dh=vh*sc;
     ctx.drawImage(vid,r.x+(r.w-dw)/2,r.y+(r.h-dh)/2,dw,dh);
    });
   }
@@ -432,8 +435,8 @@ function saveRec(){
  const url=URL.createObjectURL(blob);
  const a=document.createElement('a');
  const ts=new Date().toISOString().slice(0,19).replace('T','_').replace(/:/g,'-');
- const slotNum=(recSlot||'cam1').replace('cam','');
- a.href=url;a.download='babyphone-cam'+slotNum+'-'+ts+'.'+recExt;
+ const prefix=recMulti?'split':'cam'+(recSlot||'cam1').replace('cam','');
+ a.href=url;a.download='babyphone-'+prefix+'-'+ts+'.'+recExt;
  document.body.appendChild(a);a.click();document.body.removeChild(a);
  setTimeout(()=>URL.revokeObjectURL(url),5000);chunks=[];
  const n=document.getElementById('saveNotice');
@@ -472,4 +475,3 @@ function toggleFullscreen(){const el=document.getElementById('videoWrap');if(!do
 </script>
 </body>
 </html>
-
