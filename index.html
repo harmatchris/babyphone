@@ -1,43 +1,81 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Babyphone</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d0d0f; color: #f0f0f0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; gap: 20px; }
-    .icon { font-size: 72px; }
-    h1 { font-size: 30px; font-weight: 700; }
-    p { font-size: 15px; color: #888; text-align: center; max-width: 320px; line-height: 1.5; }
-    .cards { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 360px; margin-top: 8px; }
-    a.card { display: flex; align-items: center; gap: 18px; background: #1c1c1e; border-radius: 18px; padding: 22px 24px; text-decoration: none; color: #fff; border: 1.5px solid #2c2c2e; transition: border-color .2s, background .2s; }
-    a.card:hover { background: #222; border-color: #444; }
-    .card-icon { font-size: 36px; }
-    .card-text h2 { font-size: 18px; font-weight: 600; }
-    .card-text p { font-size: 13px; color: #888; margin-top: 3px; text-align: left; }
-    .tag { margin-left: auto; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 100px; white-space: nowrap; }
-    .tag.iphone { background: #1a3320; color: #4ade80; }
-    .tag.pc { background: #1a2540; color: #60a5fa; }
-    .footer { font-size: 12px; color: #333; margin-top: 12px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Babyphone</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;background:#0d0d0f;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#f0f0f0;display:flex;align-items:center;justify-content:center}
+.wrap{width:100%;max-width:380px;padding:32px 24px;display:flex;flex-direction:column;align-items:center;gap:28px}
+.logo{font-size:52px;line-height:1}
+h1{font-size:28px;font-weight:700;letter-spacing:-.5px}
+.sub{font-size:14px;color:#666;margin-top:-20px;text-align:center}
+.cards{width:100%;display:flex;flex-direction:column;gap:12px}
+a.card{display:flex;align-items:center;gap:16px;background:#1c1c1e;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:18px 20px;text-decoration:none;color:#f0f0f0;transition:all .18s;cursor:pointer}
+a.card:hover{background:#252527;border-color:rgba(255,255,255,.15);transform:translateY(-1px)}
+a.card:active{transform:scale(.98);background:#111}
+.card-icon{font-size:32px;width:44px;text-align:center;flex-shrink:0}
+.card-text{}
+.card-title{font-size:17px;font-weight:600;margin-bottom:3px}
+.card-sub{font-size:13px;color:#888}
+.card.viewer{background:linear-gradient(135deg,rgba(59,130,246,.18),rgba(29,78,216,.12));border-color:rgba(59,130,246,.3)}
+.card.viewer:hover{background:linear-gradient(135deg,rgba(59,130,246,.28),rgba(29,78,216,.2));border-color:rgba(59,130,246,.5)}
+.card.viewer .card-title{color:#93c5fd}
+.divider{width:100%;display:flex;align-items:center;gap:12px;color:#444;font-size:12px}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:#222}
+.footer{font-size:12px;color:#444;text-align:center}
+</style>
 </head>
 <body>
-  <div class="icon">&#x1F37C;</div>
+<div class="wrap">
+  <div class="logo">🍼</div>
   <h1>Babyphone</h1>
-  <p>Waehle das richtige Geraet</p>
+  <p class="sub">Wähle deinen Modus</p>
+
   <div class="cards">
-    <a class="card" href="kamera.html">
-      <div class="card-icon">&#x1F4F1;</div>
-      <div class="card-text"><h2>Kamera</h2><p>iPhone ins Kinderzimmer stellen</p></div>
-      <span class="tag iphone">iPhone</span>
+
+    <div class="divider">Kameras</div>
+
+    <a class="card" href="kamera.html?cam=1">
+      <div class="card-icon">📷</div>
+      <div class="card-text">
+        <div class="card-title">Cam 1</div>
+        <div class="card-sub">Erstes iPhone als Kamera</div>
+      </div>
     </a>
-    <a class="card" href="viewer.html">
-      <div class="card-icon">&#x1F4FA;</div>
-      <div class="card-text"><h2>Viewer</h2><p>Kamera vom Computer beobachten</p></div>
-      <span class="tag pc">Computer</span>
+
+    <a class="card" href="kamera.html?cam=2">
+      <div class="card-icon">📷</div>
+      <div class="card-text">
+        <div class="card-title">Cam 2</div>
+        <div class="card-sub">Zweites iPhone als Kamera</div>
+      </div>
     </a>
+
+    <a class="card" href="kamera.html?cam=3">
+      <div class="card-icon">📷</div>
+      <div class="card-text">
+        <div class="card-title">Cam 3</div>
+        <div class="card-sub">Drittes iPhone als Kamera</div>
+      </div>
+    </a>
+
+    <div class="divider">Viewer</div>
+
+    <a class="card viewer" href="viewer.html">
+      <div class="card-icon">📺</div>
+      <div class="card-text">
+        <div class="card-title">Viewer</div>
+        <div class="card-sub">Alle Kameras am PC anschauen</div>
+      </div>
+    </a>
+
   </div>
-  <p class="footer">Peer-to-Peer - Kein Server - Privat</p>
+
+  <p class="footer">harmatchris.github.io/babyphone</p>
+</div>
 </body>
 </html>
