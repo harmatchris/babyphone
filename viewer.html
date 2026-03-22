@@ -4,46 +4,47 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Babyphone - Viewer</title>
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d0d0f; color: #f0f0f0; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    #videoWrap { position: fixed; inset: 0; background: #000; display: none; }
-    #videoWrap.visible { display: block; }
-    #remoteVideo { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
-    #videoOverlay { position: absolute; inset: 0; background: rgba(0,0,0,.8); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; transition: opacity .4s; }
-    #videoOverlay.hidden { opacity: 0; pointer-events: none; }
-    .spinner { width: 44px; height: 44px; border: 3px solid #333; border-top-color: #3b82f6; border-radius: 50%; animation: spin .8s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    #overlayText { font-size: 15px; color: #999; text-align: center; line-height: 1.5; }
-    .video-bar { position: absolute; top: 0; left: 0; right: 0; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; background: linear-gradient(to bottom, rgba(0,0,0,.6), transparent); }
-    .badge { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,.4); backdrop-filter: blur(8px); border-radius: 100px; padding: 7px 16px; font-size: 14px; color: #ddd; }
-    .dot { width: 9px; height: 9px; border-radius: 50%; background: #666; flex-shrink: 0; }
-    .dot.green { background: #4ade80; animation: blink 2s infinite; }
-    .dot.orange { background: #fb923c; }
-    .dot.red { background: #f87171; }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-    .video-bottom { position: absolute; bottom: 0; left: 0; right: 0; padding: 20px; display: flex; align-items: center; gap: 12px; background: linear-gradient(to top, rgba(0,0,0,.6), transparent); }
-    .vol-wrap { flex: 1; display: flex; align-items: center; gap: 10px; }
-    .vol-wrap span { font-size: 18px; }
-    input[type="range"] { flex: 1; accent-color: #3b82f6; cursor: pointer; }
-    .btn { background: rgba(255,255,255,.12); border: none; border-radius: 10px; color: #fff; font-size: 14px; font-weight: 500; padding: 10px 16px; cursor: pointer; backdrop-filter: blur(8px); transition: background .2s; white-space: nowrap; }
-    .btn:hover { background: rgba(255,255,255,.2); }
-    .btn.danger { color: #f87171; }
-    .btn.rec { color: #f87171; }
-    .btn.rec.active { background: rgba(248,113,113,.25); color: #f87171; animation: recpulse 1.5s infinite; }
-    @keyframes recpulse { 0%,100%{opacity:1} 50%{opacity:.6} }
-    #connectScreen { background: #1c1c1e; border-radius: 20px; padding: 40px 36px; width: 100%; max-width: 400px; display: flex; flex-direction: column; align-items: center; gap: 22px; margin: 24px; }
-    .icon { font-size: 60px; }
-    h1 { font-size: 26px; font-weight: 700; }
-    .sub { font-size: 14px; color: #888; margin-top: -14px; }
-    #connectBtn { background: linear-gradient(135deg, #3b82f6, #1d4ed8); border: none; border-radius: 14px; color: #fff; font-size: 17px; font-weight: 600; padding: 16px; width: 100%; cursor: pointer; transition: opacity .2s; }
-    #connectBtn:hover { opacity: .9; }
-    #connectBtn:disabled { background: #2c2c2e; color: #555; cursor: default; }
-    .info { background: #1a2540; border: 1px solid #2a3f6a; border-radius: 12px; padding: 14px 18px; font-size: 13px; color: #93c5fd; width: 100%; line-height: 1.6; text-align: center; }
-    #saveNotice { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); background: rgba(74,222,128,.2); border: 1px solid rgba(74,222,128,.5); border-radius: 100px; padding: 8px 20px; font-size: 13px; color: #4ade80; white-space: nowrap; opacity: 0; transition: opacity .4s; pointer-events: none; }
-    #saveNotice.show { opacity: 1; }
-    #recTimer { font-size: 12px; color: #f87171; font-variant-numeric: tabular-nums; }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0d0d0f;color:#f0f0f0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+    #videoWrap{position:fixed;inset:0;background:#000;display:none}
+    #videoWrap.visible{display:block}
+    #remoteVideo{width:100%;height:100%;object-fit:contain;display:block;background:#000}
+    #videoOverlay{position:absolute;inset:0;background:rgba(0,0,0,.8);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity .4s}
+    #videoOverlay.hidden{opacity:0;pointer-events:none}
+    .spinner{width:44px;height:44px;border:3px solid #333;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    #overlayText{font-size:15px;color:#999;text-align:center;line-height:1.5}
+    .video-bar{position:absolute;top:0;left:0;right:0;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(to bottom,rgba(0,0,0,.6),transparent)}
+    .badge{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.4);backdrop-filter:blur(8px);border-radius:100px;padding:7px 16px;font-size:14px;color:#ddd}
+    .dot{width:9px;height:9px;border-radius:50%;background:#666;flex-shrink:0}
+    .dot.green{background:#4ade80;animation:blink 2s infinite}
+    .dot.orange{background:#fb923c}
+    .dot.red{background:#f87171}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+    .video-bottom{position:absolute;bottom:0;left:0;right:0;padding:16px 20px;display:flex;align-items:center;gap:10px;background:linear-gradient(to top,rgba(0,0,0,.6),transparent);flex-wrap:wrap}
+    .vol-wrap{display:flex;align-items:center;gap:8px;flex:1;min-width:120px}
+    .vol-wrap span{font-size:18px}
+    input[type="range"]{flex:1;accent-color:#3b82f6;cursor:pointer}
+    .btn{background:rgba(255,255,255,.12);border:none;border-radius:10px;color:#fff;font-size:13px;font-weight:500;padding:9px 14px;cursor:pointer;backdrop-filter:blur(8px);transition:background .2s;white-space:nowrap}
+    .btn:hover{background:rgba(255,255,255,.2)}
+    .btn.danger{color:#f87171}
+    .btn.rec{color:#f87171}
+    .btn.rec.active{background:rgba(248,113,113,.25);animation:recpulse 1.5s infinite}
+    @keyframes recpulse{0%,100%{opacity:1}50%{opacity:.6}}
+    #recTimer{font-size:12px;color:#f87171;font-variant-numeric:tabular-nums;min-width:36px}
+    #connectScreen{background:#1c1c1e;border-radius:20px;padding:40px 36px;width:100%;max-width:400px;display:flex;flex-direction:column;align-items:center;gap:22px;margin:24px}
+    .icon{font-size:60px}
+    h1{font-size:26px;font-weight:700}
+    .sub{font-size:14px;color:#888;margin-top:-14px}
+    #connectBtn{background:linear-gradient(135deg,#3b82f6,#1d4ed8);border:none;border-radius:14px;color:#fff;font-size:17px;font-weight:600;padding:16px;width:100%;cursor:pointer;transition:opacity .2s}
+    #connectBtn:hover{opacity:.9}
+    #connectBtn:disabled{background:#2c2c2e;color:#555;cursor:default}
+    .info{background:#1a2540;border:1px solid #2a3f6a;border-radius:12px;padding:14px 18px;font-size:13px;color:#93c5fd;width:100%;line-height:1.6;text-align:center}
+    #saveNotice{position:absolute;top:70px;left:50%;transform:translateX(-50%);background:rgba(74,222,128,.2);border:1px solid rgba(74,222,128,.5);border-radius:100px;padding:8px 20px;font-size:13px;color:#4ade80;white-space:nowrap;opacity:0;transition:opacity .4s;pointer-events:none}
+    #saveNotice.show{opacity:1}
   </style>
 </head>
 <body>
@@ -52,15 +53,11 @@
     <h1>Babyphone</h1>
     <p class="sub">Computer-Viewer</p>
     <button id="connectBtn" onclick="startConnect()">&#x1F534; Live verbinden</button>
-    <div class="info">&#x1F4F1; iPhone muss geoeffnet sein.<br>Sobald du verbindest, erscheint das Bild.</div>
+    <div class="info">&#x1F4F1; iPhone muss geoeffnet sein.<br>Verbindung erfolgt automatisch.</div>
   </div>
-
   <div id="videoWrap">
     <video id="remoteVideo" autoplay playsinline></video>
-    <div id="videoOverlay">
-      <div class="spinner"></div>
-      <div id="overlayText">Verbinde mit iPhone...</div>
-    </div>
+    <div id="videoOverlay"><div class="spinner"></div><div id="overlayText">Warte auf iPhone...</div></div>
     <div class="video-bar">
       <div class="badge"><div class="dot" id="dot"></div><span id="statusText">Verbinde...</span></div>
       <button class="btn danger" onclick="disconnect()">&#x2715; Trennen</button>
@@ -68,140 +65,182 @@
     <div class="video-bottom">
       <div class="vol-wrap"><span>&#x1F507;</span><input type="range" id="volume" min="0" max="1" step="0.05" value="1" oninput="setVolume(this.value)"><span>&#x1F50A;</span></div>
       <span id="recTimer"></span>
-      <button class="btn rec" id="recordBtn" onclick="toggleRecording()" style="display:none">&#x23FA; Aufnehmen</button>
+      <button class="btn rec" id="recordBtn" onclick="toggleRec()" style="display:none">&#x23FA; Aufnehmen</button>
       <button class="btn" onclick="toggleFullscreen()">&#x26F6; Vollbild</button>
     </div>
     <div id="saveNotice">&#x2705; Aufnahme gespeichert</div>
   </div>
 
   <script>
-    const CAM_PEER = 'babyphone-cam--rwe4v2x0';
-    let peer = null, currentCall = null, retryTimer = null, hasStream = false, retryCount = 0;
-    let mediaRecorder = null, recordedChunks = [], recTimerInterval = null, recSeconds = 0;
+    const FB = {
+      apiKey:"AIzaSyBQPi4f2qWg3xA65hLL7IpxOiq3kzVk5ls",
+      authDomain:"ninja-hq-chris.firebaseapp.com",
+      databaseURL:"https://ninja-hq-chris-default-rtdb.firebaseio.com",
+      projectId:"ninja-hq-chris",
+      storageBucket:"ninja-hq-chris.firebasestorage.app",
+      messagingSenderId:"811964168411",
+      appId:"1:811964168411:web:f49a87b1bdcb6aaebf74fe"
+    };
+    firebase.initializeApp(FB);
+    const db = firebase.database();
+    const S = db.ref('babyphone/session');
+    const ICE = {iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]};
 
-    function startConnect() {
-      document.getElementById('connectBtn').disabled = true;
-      document.getElementById('connectBtn').textContent = 'Verbinde...';
-      document.getElementById('connectScreen').style.display = 'none';
+    let pc=null, connected=false, offerListener=null;
+    let mr=null, chunks=[], recSecs=0, recInt=null;
+
+    function startConnect(){
+      document.getElementById('connectBtn').disabled=true;
+      document.getElementById('connectBtn').textContent='Verbinde...';
+      document.getElementById('connectScreen').style.display='none';
       document.getElementById('videoWrap').classList.add('visible');
-      initPeer();
+      setStatus('orange','Warte auf iPhone...');
+      setOverlay('Warte auf iPhone...');
+      listenForOffer();
     }
 
-    function initPeer() {
-      if (peer) { try { peer.destroy(); } catch(e){} }
-      peer = new Peer({ config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } });
-      peer.on('open', () => callPhone());
-      peer.on('error', err => { setOverlay('Fehler - versuche erneut...'); setStatus('red', err.type); scheduleRetry(); });
-      peer.on('disconnected', () => { setStatus('orange', 'Unterbrochen'); try { peer.reconnect(); } catch(e) { initPeer(); } });
-    }
-
-    function callPhone() {
-      clearTimer();
-      setOverlay('Verbinde mit iPhone...');
-      setStatus('orange', 'Verbindet...');
-      hasStream = false;
-      let emptyStream;
-      try { const ctx = new AudioContext(); emptyStream = ctx.createMediaStreamDestination().stream; }
-      catch(e) { const c = document.createElement('canvas'); c.width = c.height = 1; emptyStream = c.captureStream(0); }
-      const call = peer.call(CAM_PEER, emptyStream);
-      currentCall = call;
-      call.on('stream', remote => {
-        hasStream = true; retryCount = 0;
-        const v = document.getElementById('remoteVideo');
-        v.srcObject = remote;
-        v.play().catch(() => {});
-        hideOverlay();
-        setStatus('green', 'Live');
-        document.getElementById('recordBtn').style.display = '';
+    function listenForOffer(){
+      if(offerListener){ S.child('offer').off('value',offerListener); }
+      offerListener = S.child('offer').on('value', async snap=>{
+        if(!snap.val()) return;
+        // New or updated offer — (re)connect
+        if(pc){ try{pc.close();}catch(e){} pc=null; }
+        await connectWithOffer(snap.val());
       });
-      call.on('close', () => { hasStream = false; stopRecordingIfActive(); setOverlay('Verbindung unterbrochen...'); setStatus('orange', 'Unterbrochen'); scheduleRetry(); });
-      call.on('error', () => { hasStream = false; stopRecordingIfActive(); setOverlay('Verbindungsfehler...'); scheduleRetry(); });
-      setTimeout(() => { if (!hasStream) { try { call.close(); } catch(e){} scheduleRetry(); } }, 8000);
     }
 
-    function scheduleRetry() {
-      clearTimer();
-      retryCount++;
-      const delay = Math.min(3000 + retryCount * 500, 8000);
-      setOverlay('iPhone nicht erreichbar - Versuch in ' + Math.round(delay/1000) + 's...');
-      retryTimer = setTimeout(() => callPhone(), delay);
+    async function connectWithOffer(offer){
+      connected=false;
+      // Clear old answer so camera knows we're starting fresh
+      await S.child('answer').remove();
+      await S.child('vi').remove();
+
+      pc = new RTCPeerConnection(ICE);
+      let iceBuf=[];
+
+      pc.ontrack = e=>{
+        const v=document.getElementById('remoteVideo');
+        v.srcObject=e.streams[0];
+        v.play().catch(()=>{});
+        hideOverlay();
+        setStatus('green','Live');
+        connected=true;
+        document.getElementById('recordBtn').style.display='';
+      };
+
+      pc.onicecandidate = e=>{
+        if(e.candidate) S.child('vi').push(e.candidate.toJSON());
+      };
+
+      pc.onconnectionstatechange = ()=>{
+        const st=pc.connectionState;
+        if(st==='connecting'){ setStatus('orange','Verbindet...'); }
+        else if(st==='connected'){ setStatus('green','Live'); }
+        else if(['failed','disconnected','closed'].includes(st)){
+          connected=false;
+          stopRecIfActive();
+          document.getElementById('recordBtn').style.display='none';
+          document.getElementById('remoteVideo').srcObject=null;
+          setStatus('orange','Unterbrochen - warte...');
+          setOverlay('Verbindung unterbrochen\nWarte auf iPhone...');
+        }
+      };
+
+      // Set remote desc (offer), create answer
+      await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await S.child('answer').set({sdp:answer.sdp,type:answer.type});
+      setStatus('orange','Verbindet...');
+      setOverlay('Verbindet...');
+
+      // Apply camera ICE candidates
+      S.child('ci').on('child_added', snap=>{
+        if(!pc) return;
+        const c=snap.val();
+        if(pc.remoteDescription) pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{});
+        else iceBuf.push(c);
+      });
+      pc.addEventListener('signalingstatechange',()=>{
+        if(pc && pc.signalingState==='stable'){
+          iceBuf.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}));
+          iceBuf=[];
+        }
+      });
     }
 
-    function clearTimer() { if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; } }
-
-    function disconnect() {
-      clearTimer(); stopRecordingIfActive();
-      if (currentCall) { try { currentCall.close(); } catch(e){} currentCall = null; }
-      if (peer) { try { peer.destroy(); } catch(e){} peer = null; }
-      document.getElementById('remoteVideo').srcObject = null;
+    function disconnect(){
+      stopRecIfActive();
+      if(offerListener){ S.child('offer').off('value',offerListener); offerListener=null; }
+      S.child('answer').remove(); S.child('vi').remove();
+      if(pc){ try{pc.close();}catch(e){} pc=null; }
+      document.getElementById('remoteVideo').srcObject=null;
       document.getElementById('videoWrap').classList.remove('visible');
-      document.getElementById('recordBtn').style.display = 'none';
-      const btn = document.getElementById('connectBtn');
-      btn.disabled = false; btn.textContent = 'Live verbinden';
-      document.getElementById('connectScreen').style.display = 'flex';
-      retryCount = 0;
+      document.getElementById('recordBtn').style.display='none';
+      const btn=document.getElementById('connectBtn');
+      btn.disabled=false; btn.textContent='&#x1F534; Live verbinden';
+      document.getElementById('connectScreen').style.display='flex';
     }
 
-    // ── Recording ──────────────────────────────────────────────
-    function toggleRecording() {
-      if (mediaRecorder && mediaRecorder.state === 'recording') stopRecording();
-      else startRecording();
+    // ── Recording — saves directly to this device ──────────────
+    function toggleRec(){
+      if(mr && mr.state==='recording') stopRec();
+      else startRec();
     }
 
-    function startRecording() {
-      const stream = document.getElementById('remoteVideo').srcObject;
-      if (!stream) return;
-      recordedChunks = [];
-      const mimeTypes = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4'];
-      let opts = {};
-      for (const m of mimeTypes) { if (MediaRecorder.isTypeSupported(m)) { opts = { mimeType: m }; break; } }
-      mediaRecorder = new MediaRecorder(stream, opts);
-      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
-      mediaRecorder.onstop = saveRecording;
-      mediaRecorder.start(1000);
-      recSeconds = 0;
-      recTimerInterval = setInterval(() => {
-        recSeconds++;
-        const m = String(Math.floor(recSeconds/60)).padStart(2,'0');
-        const s = String(recSeconds%60).padStart(2,'0');
-        document.getElementById('recTimer').textContent = m + ':' + s;
-      }, 1000);
-      const btn = document.getElementById('recordBtn');
-      btn.textContent = '\u23F9 Stoppen';
-      btn.classList.add('active');
+    function startRec(){
+      const stream=document.getElementById('remoteVideo').srcObject;
+      if(!stream) return;
+      chunks=[];
+      const types=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4'];
+      let opts={};
+      for(const t of types){ if(MediaRecorder.isTypeSupported(t)){ opts={mimeType:t}; break; } }
+      mr=new MediaRecorder(stream,opts);
+      mr.ondataavailable=e=>{ if(e.data.size>0) chunks.push(e.data); };
+      mr.onstop=saveRec;
+      mr.start(1000);
+      recSecs=0;
+      recInt=setInterval(()=>{
+        recSecs++;
+        const m=String(Math.floor(recSecs/60)).padStart(2,'0');
+        const s=String(recSecs%60).padStart(2,'0');
+        document.getElementById('recTimer').textContent=m+':'+s;
+      },1000);
+      const b=document.getElementById('recordBtn');
+      b.textContent='\u23F9 Stoppen'; b.classList.add('active');
     }
 
-    function stopRecording() {
-      if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-      clearInterval(recTimerInterval);
-      document.getElementById('recTimer').textContent = '';
-      const btn = document.getElementById('recordBtn');
-      btn.textContent = '\u23FA Aufnehmen';
-      btn.classList.remove('active');
+    function stopRec(){
+      if(mr && mr.state!=='inactive') mr.stop();
+      clearInterval(recInt);
+      document.getElementById('recTimer').textContent='';
+      const b=document.getElementById('recordBtn');
+      b.textContent='\u23FA Aufnehmen'; b.classList.remove('active');
     }
 
-    function stopRecordingIfActive() { if (mediaRecorder && mediaRecorder.state === 'recording') stopRecording(); }
+    function stopRecIfActive(){ if(mr && mr.state==='recording') stopRec(); }
 
-    function saveRecording() {
-      if (!recordedChunks.length) return;
-      const blob = new Blob(recordedChunks, { type: recordedChunks[0]?.type || 'video/webm' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const ts = new Date().toISOString().slice(0,19).replace('T','_').replace(/:/g,'-');
-      a.href = url; a.download = 'babyphone-' + ts + '.webm';
+    function saveRec(){
+      if(!chunks.length) return;
+      // Save directly to the viewer's device Downloads folder
+      const blob=new Blob(chunks,{type:chunks[0]?.type||'video/webm'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      const ts=new Date().toISOString().slice(0,19).replace('T','_').replace(/:/g,'-');
+      a.href=url; a.download='babyphone-'+ts+'.webm';
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
-      recordedChunks = [];
-      const n = document.getElementById('saveNotice');
-      n.classList.add('show'); setTimeout(() => n.classList.remove('show'), 3000);
+      setTimeout(()=>URL.revokeObjectURL(url),5000);
+      chunks=[];
+      const n=document.getElementById('saveNotice');
+      n.classList.add('show'); setTimeout(()=>n.classList.remove('show'),3000);
     }
 
     // ── UI helpers ─────────────────────────────────────────────
-    function setVolume(v) { const vid = document.getElementById('remoteVideo'); vid.volume = +v; vid.muted = +v === 0; }
-    function toggleFullscreen() { const el = document.getElementById('videoWrap'); if (!document.fullscreenElement) el.requestFullscreen().catch(()=>{}); else document.exitFullscreen(); }
-    function setOverlay(text) { document.getElementById('videoOverlay').classList.remove('hidden'); document.getElementById('overlayText').textContent = text; }
-    function hideOverlay() { document.getElementById('videoOverlay').classList.add('hidden'); }
-    function setStatus(color, text) { document.getElementById('dot').className = 'dot ' + color; document.getElementById('statusText').textContent = text; }
+    function setVolume(v){ const vid=document.getElementById('remoteVideo'); vid.volume=+v; vid.muted=+v===0; }
+    function toggleFullscreen(){ const el=document.getElementById('videoWrap'); if(!document.fullscreenElement) el.requestFullscreen().catch(()=>{}); else document.exitFullscreen(); }
+    function setOverlay(t){ document.getElementById('videoOverlay').classList.remove('hidden'); document.getElementById('overlayText').textContent=t; }
+    function hideOverlay(){ document.getElementById('videoOverlay').classList.add('hidden'); }
+    function setStatus(c,t){ document.getElementById('dot').className='dot '+c; document.getElementById('statusText').textContent=t; }
   </script>
 </body>
 </html>
