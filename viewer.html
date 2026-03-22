@@ -24,7 +24,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .dot.orange{background:#fb923c}
 .dot.red{background:#f87171}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.video-bottom{position:absolute;bottom:0;left:0;right:0;padding:16px 20px;display:flex;align-items:center;gap:10px;background:linear-gradient(to top,rgba(0,0,0,.6),transparent);flex-wrap:wrap}
+#camControl{position:absolute;bottom:68px;left:0;right:0;display:none;justify-content:center;align-items:center;gap:8px;padding:0 16px;flex-wrap:wrap}
+#camControl.visible{display:flex}
+.camLabel{font-size:12px;color:#888;margin-right:2px}
+.cBtn{background:rgba(0,0,0,.55);border:1.5px solid rgba(255,255,255,.25);border-radius:100px;color:#fff;font-size:13px;font-weight:600;padding:7px 14px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.cBtn:hover{background:rgba(255,255,255,.12)}
+.cBtn.active{background:rgba(255,220,0,.9);color:#000;border-color:transparent}
+.video-bottom{position:absolute;bottom:0;left:0;right:0;padding:14px 20px;display:flex;align-items:center;gap:10px;background:linear-gradient(to top,rgba(0,0,0,.6),transparent);flex-wrap:wrap}
 .vol-wrap{display:flex;align-items:center;gap:8px;flex:1;min-width:120px}
 .vol-wrap span{font-size:18px}
 input[type="range"]{flex:1;accent-color:#3b82f6;cursor:pointer}
@@ -62,6 +68,7 @@ h1{font-size:26px;font-weight:700}
     <div class="badge"><div class="dot" id="dot"></div><span id="statusText">Verbinde...</span></div>
     <button class="btn danger" onclick="disconnect()">&#x2715; Trennen</button>
   </div>
+  <div id="camControl"><span class="camLabel">&#x1F4F7;</span></div>
   <div class="video-bottom">
     <div class="vol-wrap"><span>&#x1F507;</span><input type="range" id="volume" min="0" max="1" step="0.05" value="1" oninput="setVolume(this.value)"><span>&#x1F50A;</span></div>
     <span id="recTimer"></span>
@@ -71,209 +78,151 @@ h1{font-size:26px;font-weight:700}
   <div id="saveNotice">&#x2705; Gespeichert</div>
 </div>
 <script>
-const FB={
-  apiKey:"AIzaSyBQPi4f2qWg3xA65hLL7IpxOiq3kzVk5ls",
-  authDomain:"ninja-hq-chris.firebaseapp.com",
-  databaseURL:"https://ninja-hq-chris-default-rtdb.firebaseio.com",
-  projectId:"ninja-hq-chris",
-  storageBucket:"ninja-hq-chris.firebasestorage.app",
-  messagingSenderId:"811964168411",
-  appId:"1:811964168411:web:f49a87b1bdcb6aaebf74fe"
-};
+const FB={apiKey:"AIzaSyBQPi4f2qWg3xA65hLL7IpxOiq3kzVk5ls",authDomain:"ninja-hq-chris.firebaseapp.com",databaseURL:"https://ninja-hq-chris-default-rtdb.firebaseio.com",projectId:"ninja-hq-chris",storageBucket:"ninja-hq-chris.firebasestorage.app",messagingSenderId:"811964168411",appId:"1:811964168411:web:f49a87b1bdcb6aaebf74fe"};
 firebase.initializeApp(FB);
-const db=firebase.database(), S=db.ref('babyphone/session');
-
-const ICE={iceServers:[
-  {urls:'stun:stun.l.google.com:19302'},
-  {urls:'stun:stun1.l.google.com:19302'},
-  {urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},
-  {urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'},
-  {urls:'turn:openrelay.metered.ca:443?transport=tcp',username:'openrelayproject',credential:'openrelayproject'}
-]};
-
-let pc=null, connected=false, offerListener=null;
-let mr=null, chunks=[], recSecs=0, recInt=null, recExt='webm';
+const db=firebase.database(),S=db.ref('babyphone/session');
+const ICE={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},{urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'},{urls:'turn:openrelay.metered.ca:443?transport=tcp',username:'openrelayproject',credential:'openrelayproject'}]};
+let pc=null,connected=false,offerListener=null,capsListener=null;
+let mr=null,chunks=[],recSecs=0,recInt=null,recExt='webm',activeCamKey=null;
 
 function startConnect(){
   document.getElementById('connectBtn').disabled=true;
   document.getElementById('connectBtn').textContent='Verbinde...';
   document.getElementById('connectScreen').style.display='none';
   document.getElementById('videoWrap').classList.add('visible');
-  setStatus('orange','Warte auf iPhone...');
-  setOverlay('Warte auf iPhone...');
-  listenForOffer();
+  setStatus('orange','Warte auf iPhone...');setOverlay('Warte auf iPhone...');
+  listenForOffer();listenForCaps();
 }
 
 function listenForOffer(){
-  if(offerListener){ S.child('offer').off('value',offerListener); }
+  if(offerListener)S.child('offer').off('value',offerListener);
   offerListener=S.child('offer').on('value',async snap=>{
-    if(!snap.val()) return;
-    if(pc){ try{pc.close();}catch(e){} pc=null; }
+    if(!snap.val())return;
+    if(pc){try{pc.close();}catch(e){}pc=null;}
     await connectWithOffer(snap.val());
   });
 }
 
+function listenForCaps(){
+  if(capsListener)S.child('caps').off('value',capsListener);
+  capsListener=S.child('caps').on('value',snap=>{
+    const d=snap.val();if(!d)return;
+    if(d.cams)renderCamButtons(d.cams,d.activeCam);
+    else if(d.activeCam)updateActiveCamBtn(d.activeCam);
+  });
+}
+
+function renderCamButtons(cams,active){
+  const bar=document.getElementById('camControl');
+  bar.innerHTML='<span class="camLabel">&#x1F4F7;</span>';
+  for(const key of ['0.5','1','2','5','front']){
+    if(!cams.includes(key))continue;
+    const b=document.createElement('button');
+    b.className='cBtn'+(key===active?' active':'');
+    b.textContent=key==='front'?'\u21BA Vorne':key+'\xD7';
+    b.id='vcBtn-'+key;b.onclick=()=>sendCamCmd(key);
+    bar.appendChild(b);
+  }
+  if(cams.length>0)bar.classList.add('visible');
+  activeCamKey=active||null;
+}
+
+function updateActiveCamBtn(key){
+  document.querySelectorAll('.cBtn').forEach(b=>b.classList.remove('active'));
+  const b=document.getElementById('vcBtn-'+key);if(b)b.classList.add('active');
+  activeCamKey=key;
+}
+
+function sendCamCmd(target){
+  if(target===activeCamKey)return;
+  S.child('cmd').set({action:'cam',target:target,ts:Date.now()});
+  updateActiveCamBtn(target);
+}
+
 async function connectWithOffer(offer){
   connected=false;
-  await S.child('answer').remove();
-  await S.child('vi').remove();
-  pc=new RTCPeerConnection(ICE);
-  let iceBuf=[];
+  await S.child('answer').remove();await S.child('vi').remove();
+  pc=new RTCPeerConnection(ICE);let iceBuf=[];
   pc.ontrack=e=>{
-    const v=document.getElementById('remoteVideo');
-    v.srcObject=e.streams[0];
-    v.play().catch(()=>{});
-    hideOverlay();
-    setStatus('green','Live');
-    connected=true;
-    document.getElementById('recordBtn').style.display='';
+    const v=document.getElementById('remoteVideo');v.srcObject=e.streams[0];v.play().catch(()=>{});
+    hideOverlay();setStatus('green','Live');connected=true;document.getElementById('recordBtn').style.display='';
   };
-  pc.onicecandidate=e=>{
-    if(e.candidate) S.child('vi').push(e.candidate.toJSON());
-  };
+  pc.onicecandidate=e=>{if(e.candidate)S.child('vi').push(e.candidate.toJSON());};
   pc.onconnectionstatechange=()=>{
     const st=pc.connectionState;
-    if(st==='connecting'){ setStatus('orange','Verbindet...'); }
-    else if(st==='connected'){ setStatus('green','Live'); hideOverlay(); }
+    if(st==='connecting')setStatus('orange','Verbindet...');
+    else if(st==='connected'){setStatus('green','Live');hideOverlay();}
     else if(['failed','disconnected','closed'].includes(st)){
-      connected=false;
-      stopRecIfActive();
+      connected=false;stopRecIfActive();
       document.getElementById('recordBtn').style.display='none';
       document.getElementById('remoteVideo').srcObject=null;
-      setStatus('orange','Unterbrochen - warte...');
-      setOverlay('Verbindung unterbrochen\nWarte auf iPhone...');
+      setStatus('orange','Unterbrochen - warte...');setOverlay('Verbindung unterbrochen\nWarte auf iPhone...');
     }
   };
   await pc.setRemoteDescription(new RTCSessionDescription(offer));
-  const answer=await pc.createAnswer();
-  await pc.setLocalDescription(answer);
+  const answer=await pc.createAnswer();await pc.setLocalDescription(answer);
   await S.child('answer').set({sdp:answer.sdp,type:answer.type});
-  setStatus('orange','Verbindet...');
-  setOverlay('Verbindet...');
+  setStatus('orange','Verbindet...');setOverlay('Verbindet...');
   S.child('ci').on('child_added',snap=>{
-    if(!pc) return;
-    const c=snap.val();
-    if(pc.remoteDescription) pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{});
-    else iceBuf.push(c);
+    if(!pc)return;const c=snap.val();
+    if(pc.remoteDescription)pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{});else iceBuf.push(c);
   });
   pc.addEventListener('signalingstatechange',()=>{
-    if(pc&&pc.signalingState==='stable'){
-      iceBuf.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}));
-      iceBuf=[];
-    }
+    if(pc&&pc.signalingState==='stable'){iceBuf.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}));iceBuf=[];}
   });
 }
 
 function disconnect(){
   stopRecIfActive();
-  if(offerListener){ S.child('offer').off('value',offerListener); offerListener=null; }
-  S.child('answer').remove();
-  S.child('vi').remove();
-  if(pc){ try{pc.close();}catch(e){} pc=null; }
+  if(offerListener){S.child('offer').off('value',offerListener);offerListener=null;}
+  if(capsListener){S.child('caps').off('value',capsListener);capsListener=null;}
+  S.child('answer').remove();S.child('vi').remove();
+  if(pc){try{pc.close();}catch(e){}pc=null;}
   document.getElementById('remoteVideo').srcObject=null;
   document.getElementById('videoWrap').classList.remove('visible');
   document.getElementById('recordBtn').style.display='none';
-  const btn=document.getElementById('connectBtn');
-  btn.disabled=false;
-  btn.textContent='&#x1F534; Live verbinden';
+  const cc=document.getElementById('camControl');cc.classList.remove('visible');cc.innerHTML='<span class="camLabel">&#x1F4F7;</span>';
+  const btn=document.getElementById('connectBtn');btn.disabled=false;btn.textContent='&#x1F534; Live verbinden';
   document.getElementById('connectScreen').style.display='flex';
 }
 
-// ── Recording ─────────────────────────────────────────────
-function pickMime(){
-  const candidates=[
-    {mime:'video/mp4;codecs=h264,aac', ext:'mp4'},
-    {mime:'video/mp4;codecs=avc1',     ext:'mp4'},
-    {mime:'video/mp4',                  ext:'mp4'},
-    {mime:'video/webm;codecs=vp9,opus', ext:'webm'},
-    {mime:'video/webm;codecs=vp8,opus', ext:'webm'},
-    {mime:'video/webm',                 ext:'webm'}
-  ];
-  for(const c of candidates){
-    if(MediaRecorder.isTypeSupported(c.mime)) return c;
-  }
-  return {mime:'',ext:'webm'};
-}
+function pickMime(){const c=[{mime:'video/mp4;codecs=h264,aac',ext:'mp4'},{mime:'video/mp4;codecs=avc1',ext:'mp4'},{mime:'video/mp4',ext:'mp4'},{mime:'video/webm;codecs=vp9,opus',ext:'webm'},{mime:'video/webm;codecs=vp8,opus',ext:'webm'},{mime:'video/webm',ext:'webm'}];for(const x of c)if(MediaRecorder.isTypeSupported(x.mime))return x;return{mime:'',ext:'webm'};}
 
-function toggleRec(){
-  if(mr&&mr.state==='recording') stopRec();
-  else startRec();
-}
+function toggleRec(){if(mr&&mr.state==='recording')stopRec();else startRec();}
 
 function startRec(){
-  const stream=document.getElementById('remoteVideo').srcObject;
-  if(!stream) return;
-  chunks=[];
-  const chosen=pickMime();
-  recExt=chosen.ext;
-  const opts=chosen.mime?{mimeType:chosen.mime}:{};
-  mr=new MediaRecorder(stream,opts);
-  mr.ondataavailable=e=>{ if(e.data.size>0) chunks.push(e.data); };
-  mr.onstop=saveRec;
-  mr.start(1000);
-  recSecs=0;
-  recInt=setInterval(()=>{
-    recSecs++;
-    const m=String(Math.floor(recSecs/60)).padStart(2,'0');
-    const s=String(recSecs%60).padStart(2,'0');
-    document.getElementById('recTimer').textContent=m+':'+s;
-  },1000);
-  const b=document.getElementById('recordBtn');
-  b.textContent='\u23F9 Stoppen';
-  b.classList.add('active');
+  const stream=document.getElementById('remoteVideo').srcObject;if(!stream)return;
+  chunks=[];const chosen=pickMime();recExt=chosen.ext;
+  mr=new MediaRecorder(stream,chosen.mime?{mimeType:chosen.mime}:{});
+  mr.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data);};mr.onstop=saveRec;mr.start(1000);recSecs=0;
+  recInt=setInterval(()=>{recSecs++;const m=String(Math.floor(recSecs/60)).padStart(2,'0'),s=String(recSecs%60).padStart(2,'0');document.getElementById('recTimer').textContent=m+':'+s;},1000);
+  document.getElementById('recordBtn').textContent='\u23F9 Stoppen';document.getElementById('recordBtn').classList.add('active');
 }
 
 function stopRec(){
-  if(mr&&mr.state!=='inactive') mr.stop();
-  clearInterval(recInt);
+  if(mr&&mr.state!=='inactive')mr.stop();clearInterval(recInt);
   document.getElementById('recTimer').textContent='';
-  const b=document.getElementById('recordBtn');
-  b.textContent='\u23FA Aufnehmen';
-  b.classList.remove('active');
+  document.getElementById('recordBtn').textContent='\u23FA Aufnehmen';document.getElementById('recordBtn').classList.remove('active');
 }
-
-function stopRecIfActive(){
-  if(mr&&mr.state==='recording') stopRec();
-}
+function stopRecIfActive(){if(mr&&mr.state==='recording')stopRec();}
 
 function saveRec(){
-  if(!chunks.length) return;
+  if(!chunks.length)return;
   const blob=new Blob(chunks,{type:chunks[0]?.type||'video/webm'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
   const ts=new Date().toISOString().slice(0,19).replace('T','_').replace(/:/g,'-');
-  a.href=url;
-  a.download='babyphone-'+ts+'.'+recExt;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(url),5000);
-  chunks=[];
+  a.href=url;a.download='babyphone-'+ts+'.'+recExt;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),5000);chunks=[];
   const n=document.getElementById('saveNotice');
-  n.textContent='\u2705 Gespeichert als .'+recExt;
-  n.classList.add('show');
-  setTimeout(()=>n.classList.remove('show'),3000);
+  n.textContent='\u2705 Gespeichert als .'+recExt;n.classList.add('show');setTimeout(()=>n.classList.remove('show'),3000);
 }
 
-// ── UI helpers ────────────────────────────────────────────
-function setVolume(v){
-  const vid=document.getElementById('remoteVideo');
-  vid.volume=+v; vid.muted=+v===0;
-}
-function toggleFullscreen(){
-  const el=document.getElementById('videoWrap');
-  if(!document.fullscreenElement) el.requestFullscreen().catch(()=>{});
-  else document.exitFullscreen();
-}
-function setOverlay(t){
-  document.getElementById('videoOverlay').classList.remove('hidden');
-  document.getElementById('overlayText').textContent=t;
-}
-function hideOverlay(){ document.getElementById('videoOverlay').classList.add('hidden'); }
-function setStatus(c,t){
-  document.getElementById('dot').className='dot '+c;
-  document.getElementById('statusText').textContent=t;
-}
+function setVolume(v){const vid=document.getElementById('remoteVideo');vid.volume=+v;vid.muted=+v===0;}
+function toggleFullscreen(){const el=document.getElementById('videoWrap');if(!document.fullscreenElement)el.requestFullscreen().catch(()=>{});else document.exitFullscreen();}
+function setOverlay(t){document.getElementById('videoOverlay').classList.remove('hidden');document.getElementById('overlayText').textContent=t;}
+function hideOverlay(){document.getElementById('videoOverlay').classList.add('hidden');}
+function setStatus(c,t){document.getElementById('dot').className='dot '+c;document.getElementById('statusText').textContent=t;}
 </script>
 </body>
 </html>
