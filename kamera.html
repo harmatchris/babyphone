@@ -15,7 +15,7 @@
     #liveView.visible { display: block; }
     #cameraFeed { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-    /* Top pill */
+    /* Status pill top */
     .pill {
       position: fixed; top: env(safe-area-inset-top, 16px); left: 50%; transform: translateX(-50%);
       margin-top: 12px; background: rgba(0,0,0,0.55); backdrop-filter: blur(12px);
@@ -29,39 +29,64 @@
     .dot.red { background: #f87171; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
 
-    /* Night mode button */
-    #nightBtn {
+    /* Bottom controls bar */
+    #controls {
       position: fixed;
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 28px);
-      left: 50%; transform: translateX(-50%);
-      background: rgba(0,0,0,0.55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,.2); border-radius: 100px;
-      padding: 12px 28px; font-family: -apple-system, sans-serif;
-      font-size: 15px; font-weight: 600; color: #fff;
-      cursor: pointer; z-index: 100; white-space: nowrap;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+      left: 0; right: 0;
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      z-index: 100;
     }
 
-    /* Night overlay - pure black screen, tap to exit */
-    #nightOverlay {
-      display: none; position: fixed; inset: 0; background: #000; z-index: 200; cursor: pointer;
+    /* Camera selector row */
+    #camRow {
+      display: flex; gap: 8px; align-items: center;
     }
-    #nightOverlay.active { display: flex; align-items: center; justify-content: center; }
+    .cam-btn {
+      background: rgba(0,0,0,0.55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1.5px solid rgba(255,255,255,.25); border-radius: 100px;
+      padding: 8px 16px; font-family: -apple-system, sans-serif;
+      font-size: 14px; font-weight: 600; color: #fff; cursor: pointer;
+      transition: background .15s, border-color .15s;
+      white-space: nowrap;
+    }
+    .cam-btn.active {
+      background: rgba(255,255,255,.22); border-color: #fff;
+    }
+
+    /* Night mode button */
+    #nightBtn {
+      background: rgba(0,0,0,0.55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,.2); border-radius: 100px;
+      padding: 11px 28px; font-family: -apple-system, sans-serif;
+      font-size: 15px; font-weight: 600; color: #fff;
+      cursor: pointer; white-space: nowrap;
+    }
+
+    /* Night overlay */
+    #nightOverlay {
+      display: none; position: fixed; inset: 0; background: #000; z-index: 200;
+      align-items: center; justify-content: center;
+    }
+    #nightOverlay.active { display: flex; }
     #nightHint {
-      color: rgba(255,255,255,.07); font-family: -apple-system, sans-serif;
-      font-size: 13px; text-align: center; line-height: 1.6; user-select: none;
+      color: rgba(255,255,255,.06); font-family: -apple-system, sans-serif;
+      font-size: 13px; text-align: center; line-height: 1.8; user-select: none;
+      pointer-events: none;
     }
 
     /* Connected banner */
     .connected-banner {
-      position: fixed; bottom: env(safe-area-inset-bottom, 20px); left: 50%; transform: translateX(-50%);
-      margin-bottom: 80px; background: rgba(74,222,128,.2); border: 1px solid rgba(74,222,128,.5);
+      position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 120px);
+      left: 50%; transform: translateX(-50%);
+      background: rgba(74,222,128,.2); border: 1px solid rgba(74,222,128,.5);
       backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 100px;
       padding: 10px 24px; font-family: -apple-system, sans-serif; font-size: 14px; color: #4ade80;
       z-index: 100; opacity: 0; transition: opacity .4s;
     }
     .connected-banner.show { opacity: 1; }
 
-    /* Loading / tap screens */
+    /* Tap / load screens */
     #tapScreen {
       display: none; position: fixed; inset: 0; background: #0d0d0f;
       flex-direction: column; align-items: center; justify-content: center;
@@ -100,35 +125,34 @@
   <div id="liveView">
     <video id="cameraFeed" autoplay playsinline muted></video>
     <div class="pill"><div class="dot" id="dot"></div><span id="statusText">Verbinde...</span></div>
-    <div class="connected-banner" id="connBanner">Verbunden mit Computer</div>
-    <button id="nightBtn" onclick="enterNightMode()">&#x1F319; Bildschirm abdunkeln</button>
+    <div class="connected-banner" id="connBanner">&#x1F7E2; Verbunden mit Computer</div>
+
+    <div id="controls">
+      <div id="camRow"><!-- camera buttons injected here --></div>
+      <button id="nightBtn" onclick="enterNightMode()">&#x1F319; Bildschirm abdunkeln</button>
+    </div>
   </div>
 
-  <!-- Pure black overlay — tap anywhere to exit -->
-  <div id="nightOverlay" onclick="exitNightMode()">
-    <div id="nightHint">Tippen zum Einschalten</div>
+  <!-- Pure black overlay. Exit: triple-tap with 2 fingers -->
+  <div id="nightOverlay">
+    <div id="nightHint">3x mit 2 Fingern tippen zum Einschalten</div>
   </div>
 
   <script>
     const ROOM_CODE = 'rwe4v2x0';
-    const PEER_ID = 'babyphone-cam--' + ROOM_CODE;
+    const PEER_ID   = 'babyphone-cam--' + ROOM_CODE;
     let stream = null, peer = null, currentCall = null, wakeLock = null;
+    let cameras = [];   // [{deviceId, label, display}]
+    let activeCamId = null;
 
+    // ── Startup ────────────────────────────────────────────────
     window.addEventListener('load', () => { tryStart(false); });
 
     async function tryStart(fromTap) {
-      let timedOut = false;
-      let hangTimer = null;
-
-      // iOS: getUserMedia can hang silently without user gesture — show tap screen after 3s
+      let timedOut = false, hangTimer = null;
       if (!fromTap) {
-        hangTimer = setTimeout(() => {
-          timedOut = true;
-          hide('loadScreen');
-          show('tapScreen');
-        }, 3000);
+        hangTimer = setTimeout(() => { timedOut = true; hide('loadScreen'); show('tapScreen'); }, 3000);
       }
-
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
@@ -139,23 +163,93 @@
       } catch(e) {
         if (hangTimer) clearTimeout(hangTimer);
         hide('loadScreen');
-        if (!fromTap) { show('tapScreen'); }
-        else { alert('Kamera-Zugriff verweigert: ' + e.message); }
+        if (!fromTap) show('tapScreen');
+        else alert('Kamera-Zugriff verweigert: ' + e.message);
       }
     }
 
     function onTap() { hide('tapScreen'); show('loadScreen'); tryStart(true); }
 
-    function onCameraReady() {
+    async function onCameraReady() {
       hide('loadScreen'); hide('tapScreen');
       document.getElementById('liveView').classList.add('visible');
       document.getElementById('cameraFeed').srcObject = stream;
+      // record which camera is active
+      const track = stream.getVideoTracks()[0];
+      activeCamId = track?.getSettings()?.deviceId || null;
       keepScreenOn();
       keepAliveAudio();
       connectPeer();
+      await loadCameraList();
+      setupNightModeExit();
     }
 
-    // ── Night mode: pure black screen, stream keeps running ────
+    // ── Camera listing & switching ─────────────────────────────
+    async function loadCameraList() {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const vids = devices.filter(d => d.kind === 'videoinput');
+        cameras = vids.map(d => ({ deviceId: d.deviceId, label: d.label, display: labelToDisplay(d.label) }));
+        renderCamButtons();
+      } catch(e) {}
+    }
+
+    function labelToDisplay(label) {
+      const l = label.toLowerCase();
+      if (l.includes('ultra wide') || l.includes('ultrawide')) return '0.5x';
+      if (l.includes('telephoto') || l.includes('tele'))         return 'Tele';
+      if (l.includes('front') || l.includes('vorder'))           return '&#x21BA; Vorne';
+      if (l.includes('back') || l.includes('rear') || l.includes('hinten')) return '1x';
+      // fallback: front vs back by position
+      return label || '1x';
+    }
+
+    function renderCamButtons() {
+      const row = document.getElementById('camRow');
+      row.innerHTML = '';
+      if (cameras.length <= 1) return; // only one camera — hide row
+      cameras.forEach(cam => {
+        const btn = document.createElement('button');
+        btn.className = 'cam-btn' + (cam.deviceId === activeCamId ? ' active' : '');
+        btn.innerHTML = cam.display;
+        btn.onclick = () => switchCamera(cam.deviceId);
+        row.appendChild(btn);
+      });
+    }
+
+    async function switchCamera(deviceId) {
+      if (deviceId === activeCamId) return;
+      try {
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          video: { deviceId: { exact: deviceId }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+        });
+        // Stop old video tracks
+        stream.getVideoTracks().forEach(t => t.stop());
+        // Replace video track in existing stream for PeerJS
+        const newVideo = newStream.getVideoTracks()[0];
+        const newAudio = newStream.getAudioTracks()[0];
+        // Replace in WebRTC sender if call is active
+        if (currentCall && currentCall.peerConnection) {
+          currentCall.peerConnection.getSenders().forEach(sender => {
+            if (sender.track?.kind === 'video' && newVideo) sender.replaceTrack(newVideo);
+            if (sender.track?.kind === 'audio' && newAudio) sender.replaceTrack(newAudio);
+          });
+        }
+        // Swap out stream reference
+        stream.getVideoTracks().forEach(t => stream.removeTrack(t));
+        stream.addTrack(newVideo);
+        if (newAudio) { stream.getAudioTracks().forEach(t => { stream.removeTrack(t); t.stop(); }); stream.addTrack(newAudio); }
+        stream = newStream;
+        document.getElementById('cameraFeed').srcObject = stream;
+        activeCamId = deviceId;
+        renderCamButtons();
+      } catch(e) {
+        alert('Kamera wechsel fehlgeschlagen: ' + e.message);
+      }
+    }
+
+    // ── Night mode ─────────────────────────────────────────────
     function enterNightMode() {
       document.getElementById('nightOverlay').classList.add('active');
     }
@@ -163,14 +257,30 @@
       document.getElementById('nightOverlay').classList.remove('active');
     }
 
+    function setupNightModeExit() {
+      const overlay = document.getElementById('nightOverlay');
+      let tapCount = 0, tapTimer = null;
+      overlay.addEventListener('touchend', e => {
+        // Only count touches where exactly 2 fingers were just released
+        if (e.changedTouches.length === 2 && e.touches.length === 0) {
+          tapCount++;
+          if (tapTimer) clearTimeout(tapTimer);
+          if (tapCount >= 3) {
+            tapCount = 0;
+            exitNightMode();
+          } else {
+            tapTimer = setTimeout(() => { tapCount = 0; }, 800);
+          }
+        }
+        e.preventDefault();
+      }, { passive: false });
+    }
+
     // ── PeerJS ─────────────────────────────────────────────────
     function connectPeer() {
       if (peer) { try { peer.destroy(); } catch(e){} }
       peer = new Peer(PEER_ID, {
-        config: { iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' }
-        ]}
+        config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] }
       });
       peer.on('open', () => setStatus('green', 'Bereit - warte auf Viewer...'));
       peer.on('call', call => {
@@ -182,21 +292,13 @@
         call.on('error', () => { currentCall = null; showBanner(false); setStatus('orange', 'Verbindungsfehler'); });
       });
       peer.on('error', err => {
-        if (err.type === 'unavailable-id') {
-          setStatus('orange', 'ID belegt - warte 6s...');
-          setTimeout(() => connectPeer(), 6000);
-        } else {
-          setStatus('red', 'Fehler: ' + err.type);
-          setTimeout(() => connectPeer(), 6000);
-        }
+        if (err.type === 'unavailable-id') { setStatus('orange', 'ID belegt - warte...'); setTimeout(connectPeer, 6000); }
+        else { setStatus('red', 'Fehler: ' + err.type); setTimeout(connectPeer, 6000); }
       });
-      peer.on('disconnected', () => {
-        setStatus('orange', 'Reconnect...');
-        try { peer.reconnect(); } catch(e) { setTimeout(connectPeer, 4000); }
-      });
+      peer.on('disconnected', () => { setStatus('orange', 'Reconnect...'); try { peer.reconnect(); } catch(e) { setTimeout(connectPeer, 4000); } });
     }
 
-    // ── Keep screen / tab alive ────────────────────────────────
+    // ── Keep alive ─────────────────────────────────────────────
     async function keepScreenOn() {
       try {
         if ('wakeLock' in navigator) {
@@ -212,15 +314,14 @@
     function keepAliveAudio() {
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
         gain.gain.value = 0.0001;
         osc.connect(gain); gain.connect(ctx.destination); osc.start();
       } catch(e) {}
     }
 
     // ── Helpers ────────────────────────────────────────────────
-    function setStatus(color, text) { document.getElementById('dot').className = 'dot ' + color; document.getElementById('statusText').textContent = text; }
+    function setStatus(c, t) { document.getElementById('dot').className = 'dot ' + c; document.getElementById('statusText').textContent = t; }
     function showBanner(on) { document.getElementById('connBanner').classList.toggle('show', on); }
     function show(id) { const el = document.getElementById(id); if(el) el.style.display = ''; }
     function hide(id) { const el = document.getElementById(id); if(el) el.style.display = 'none'; }
