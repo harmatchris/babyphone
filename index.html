@@ -6,12 +6,13 @@
   <title>Babyphone</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, sans-serif; background: #0d0d0f; color: #f0f0f0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; gap: 20px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d0d0f; color: #f0f0f0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; gap: 20px; }
     .icon { font-size: 72px; }
     h1 { font-size: 30px; font-weight: 700; }
     p { font-size: 15px; color: #888; text-align: center; max-width: 320px; line-height: 1.5; }
     .cards { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 360px; margin-top: 8px; }
-    a.card { display: flex; align-items: center; gap: 18px; background: #1c1c1e; border-radius: 18px; padding: 22px 24px; text-decoration: none; color: #fff; border: 1.5px solid #2c2c2e; }
+    a.card { display: flex; align-items: center; gap: 18px; background: #1c1c1e; border-radius: 18px; padding: 22px 24px; text-decoration: none; color: #fff; border: 1.5px solid #2c2c2e; transition: border-color .2s, background .2s; }
+    a.card:hover { background: #222; border-color: #444; }
     .card-icon { font-size: 36px; }
     .card-text h2 { font-size: 18px; font-weight: 600; }
     .card-text p { font-size: 13px; color: #888; margin-top: 3px; text-align: left; }
@@ -26,12 +27,12 @@
   <h1>Babyphone</h1>
   <p>Waehle das richtige Geraet</p>
   <div class="cards">
-    <a class="card" href="/kamera.html">
+    <a class="card" href="kamera.html">
       <div class="card-icon">&#x1F4F1;</div>
       <div class="card-text"><h2>Kamera</h2><p>iPhone ins Kinderzimmer stellen</p></div>
       <span class="tag iphone">iPhone</span>
     </a>
-    <a class="card" href="/viewer.html">
+    <a class="card" href="viewer.html">
       <div class="card-icon">&#x1F4FA;</div>
       <div class="card-text"><h2>Viewer</h2><p>Kamera vom Computer beobachten</p></div>
       <span class="tag pc">Computer</span>
