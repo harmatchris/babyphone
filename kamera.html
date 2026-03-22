@@ -15,9 +15,10 @@
     #liveView.visible { display: block; }
     #cameraFeed { width: 100%; height: 100%; object-fit: cover; display: block; }
     .pill {
-      position: fixed; top: env(safe-area-inset-top, 16px); left: 50%; transform: translateX(-50%); margin-top: 12px;
-      background: rgba(0,0,0,0.55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-      border-radius: 100px; padding: 8px 18px; display: flex; align-items: center; gap: 8px;
+      position: fixed; top: env(safe-area-inset-top, 16px); left: 50%; transform: translateX(-50%);
+      margin-top: 12px; background: rgba(0,0,0,0.55); backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px); border-radius: 100px; padding: 8px 18px;
+      display: flex; align-items: center; gap: 8px;
       font-family: -apple-system, sans-serif; font-size: 14px; color: #fff; white-space: nowrap; z-index: 100;
     }
     .dot { width: 9px; height: 9px; border-radius: 50%; background: #666; flex-shrink: 0; }
@@ -26,26 +27,28 @@
     .dot.red { background: #f87171; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
     .connected-banner {
-      position: fixed; bottom: env(safe-area-inset-bottom, 20px); left: 50%; transform: translateX(-50%); margin-bottom: 20px;
-      background: rgba(74,222,128,.2); border: 1px solid rgba(74,222,128,.5); backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px); border-radius: 100px; padding: 10px 24px;
-      font-family: -apple-system, sans-serif; font-size: 14px; color: #4ade80; z-index: 100;
-      opacity: 0; transition: opacity .4s;
+      position: fixed; bottom: env(safe-area-inset-bottom, 20px); left: 50%; transform: translateX(-50%);
+      margin-bottom: 20px; background: rgba(74,222,128,.2); border: 1px solid rgba(74,222,128,.5);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 100px;
+      padding: 10px 24px; font-family: -apple-system, sans-serif; font-size: 14px; color: #4ade80;
+      z-index: 100; opacity: 0; transition: opacity .4s;
     }
     .connected-banner.show { opacity: 1; }
     #tapScreen {
       display: none; position: fixed; inset: 0; background: #0d0d0f;
-      flex-direction: column; align-items: center; justify-content: center; gap: 20px;
-      font-family: -apple-system, sans-serif; color: #fff; text-align: center; padding: 32px; cursor: pointer;
+      flex-direction: column; align-items: center; justify-content: center;
+      gap: 20px; font-family: -apple-system, sans-serif; color: #fff;
+      text-align: center; padding: 32px; cursor: pointer;
     }
     #tapScreen.visible { display: flex; }
     #tapScreen .icon { font-size: 72px; }
     #tapScreen h1 { font-size: 26px; font-weight: 700; }
     #tapScreen p { font-size: 16px; color: #888; line-height: 1.5; max-width: 280px; }
     .tap-ring {
-      width: 90px; height: 90px; border-radius: 50%; background: rgba(74,222,128,.15);
-      border: 2px solid rgba(74,222,128,.4); display: flex; align-items: center; justify-content: center;
-      font-size: 40px; animation: ring 2s infinite;
+      width: 90px; height: 90px; border-radius: 50%;
+      background: rgba(74,222,128,.15); border: 2px solid rgba(74,222,128,.4);
+      display: flex; align-items: center; justify-content: center; font-size: 40px;
+      animation: ring 2s infinite;
     }
     @keyframes ring {
       0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74,222,128,.4); }
@@ -59,84 +62,134 @@
   </style>
 </head>
 <body>
-<div id="loadScreen"><div class="spinner"></div></div>
-<div id="tapScreen" onclick="onTap()">
-  <div class="tap-ring">&#x1F4F7;</div>
-  <h1>Babyphone starten</h1>
-  <p>Einmalig tippen um die Kamera zu erlauben. Danach startet die App immer automatisch.</p>
-</div>
-<div id="liveView">
-  <video id="cameraFeed" autoplay playsinline muted></video>
-  <div class="pill"><div class="dot" id="dot"></div><span id="statusText">Verbinde...</span></div>
-  <div class="connected-banner" id="connBanner">Verbunden mit Computer</div>
-</div>
-<script>
-  const ROOM_CODE = 'rwe4v2x0';
-  const PEER_ID = 'babyphone-cam--' + ROOM_CODE;
-  let stream = null, peer = null, currentCall = null, wakeLock = null;
+  <div id="loadScreen"><div class="spinner"></div></div>
+  <div id="tapScreen" onclick="onTap()">
+    <div class="tap-ring">&#x1F4F7;</div>
+    <h1>Babyphone starten</h1>
+    <p>Einmalig tippen um die Kamera zu erlauben. Danach startet die App immer automatisch.</p>
+  </div>
+  <div id="liveView">
+    <video id="cameraFeed" autoplay playsinline muted></video>
+    <div class="pill"><div class="dot" id="dot"></div><span id="statusText">Verbinde...</span></div>
+    <div class="connected-banner" id="connBanner">Verbunden mit Computer</div>
+  </div>
 
-  window.addEventListener('load', () => { tryStart(false); });
+  <script>
+    const ROOM_CODE = 'rwe4v2x0';
+    const PEER_ID = 'babyphone-cam--' + ROOM_CODE;
+    let stream = null, peer = null, currentCall = null, wakeLock = null;
 
-  async function tryStart(fromTap) {
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
-      });
-      onCameraReady();
-    } catch(e) {
-      hide('loadScreen');
-      if (!fromTap) { show('tapScreen'); }
-      else { alert('Kamera-Zugriff verweigert: ' + e.message); }
-    }
-  }
+    window.addEventListener('load', () => { tryStart(false); });
 
-  function onTap() { hide('tapScreen'); show('loadScreen'); tryStart(true); }
+    async function tryStart(fromTap) {
+      let timedOut = false;
+      let hangTimer = null;
 
-  function onCameraReady() {
-    hide('loadScreen'); hide('tapScreen');
-    document.getElementById('liveView').classList.add('visible');
-    document.getElementById('cameraFeed').srcObject = stream;
-    keepScreenOn(); keepAliveAudio(); connectPeer();
-  }
-
-  function connectPeer() {
-    if (peer) { try { peer.destroy(); } catch(e){} }
-    peer = new Peer(PEER_ID, { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } });
-    peer.on('open', () => setStatus('green', 'Bereit - warte auf Viewer...'));
-    peer.on('call', call => {
-      if (currentCall) try { currentCall.close(); } catch(e){}
-      currentCall = call;
-      call.answer(stream);
-      showBanner(true); setStatus('green', 'Wird uebertragen');
-      call.on('close', () => { currentCall = null; showBanner(false); setStatus('orange', 'Bereit - warte auf Viewer...'); });
-      call.on('error', () => { currentCall = null; showBanner(false); setStatus('orange', 'Verbindungsfehler'); });
-    });
-    peer.on('error', err => {
-      if (err.type === 'unavailable-id') { setStatus('orange', 'Reconnect...'); setTimeout(() => connectPeer(), 4000); }
-      else { setStatus('red', 'Fehler'); setTimeout(() => connectPeer(), 6000); }
-    });
-    peer.on('disconnected', () => { setStatus('orange', 'Reconnect...'); try { peer.reconnect(); } catch(e) { setTimeout(connectPeer, 4000); } });
-  }
-
-  async function keepScreenOn() {
-    try {
-      if ('wakeLock' in navigator) {
-        wakeLock = await navigator.wakeLock.request('screen');
-        wakeLock.addEventListener('release', () => { if (document.visibilityState === 'visible') keepScreenOn(); });
+      // On iOS, getUserMedia can hang silently without a user gesture.
+      // After 3 seconds with no response, fall back to tap screen.
+      if (!fromTap) {
+        hangTimer = setTimeout(() => {
+          timedOut = true;
+          hide('loadScreen');
+          show('tapScreen');
+        }, 3000);
       }
-    } catch(e) {}
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && (!wakeLock || wakeLock.released)) keepScreenOn(); });
-  }
 
-  function keepAliveAudio() {
-    try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const osc = ctx.createOscillator(); const gain = ctx.createGain(); gain.gain.value = 0.0001; osc.connect(gain); gain.connect(ctx.destination); osc.start(); } catch(e) {}
-  }
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+        });
+        if (hangTimer) clearTimeout(hangTimer);
+        if (!timedOut) onCameraReady();
+      } catch(e) {
+        if (hangTimer) clearTimeout(hangTimer);
+        hide('loadScreen');
+        if (!fromTap) { show('tapScreen'); }
+        else { alert('Kamera-Zugriff verweigert: ' + e.message); }
+      }
+    }
 
-  function setStatus(color, text) { document.getElementById('dot').className = 'dot ' + color; document.getElementById('statusText').textContent = text; }
-  function showBanner(on) { document.getElementById('connBanner').classList.toggle('show', on); }
-  function show(id) { document.getElementById(id).style.display = ''; }
-  function hide(id) { document.getElementById(id).style.display = 'none'; }
-</script>
+    function onTap() {
+      hide('tapScreen');
+      show('loadScreen');
+      tryStart(true);
+    }
+
+    function onCameraReady() {
+      hide('loadScreen');
+      hide('tapScreen');
+      document.getElementById('liveView').classList.add('visible');
+      document.getElementById('cameraFeed').srcObject = stream;
+      keepScreenOn();
+      keepAliveAudio();
+      connectPeer();
+    }
+
+    function connectPeer() {
+      if (peer) { try { peer.destroy(); } catch(e){} }
+      peer = new Peer(PEER_ID, {
+        config: { iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' }
+        ]}
+      });
+      peer.on('open', () => setStatus('green', 'Bereit - warte auf Viewer...'));
+      peer.on('call', call => {
+        if (currentCall) try { currentCall.close(); } catch(e){}
+        currentCall = call;
+        call.answer(stream);
+        showBanner(true);
+        setStatus('green', 'Wird uebertragen');
+        call.on('close', () => { currentCall = null; showBanner(false); setStatus('orange', 'Bereit - warte auf Viewer...'); });
+        call.on('error', () => { currentCall = null; showBanner(false); setStatus('orange', 'Verbindungsfehler'); });
+      });
+      peer.on('error', err => {
+        if (err.type === 'unavailable-id') {
+          setStatus('orange', 'ID belegt - warte...');
+          setTimeout(() => connectPeer(), 6000);
+        } else {
+          setStatus('red', 'Fehler: ' + err.type);
+          setTimeout(() => connectPeer(), 6000);
+        }
+      });
+      peer.on('disconnected', () => {
+        setStatus('orange', 'Reconnect...');
+        try { peer.reconnect(); } catch(e) { setTimeout(connectPeer, 4000); }
+      });
+    }
+
+    async function keepScreenOn() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => { if (document.visibilityState === 'visible') keepScreenOn(); });
+        }
+      } catch(e) {}
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && (!wakeLock || wakeLock.released)) keepScreenOn();
+      });
+    }
+
+    function keepAliveAudio() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        gain.gain.value = 0.0001;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+      } catch(e) {}
+    }
+
+    function setStatus(color, text) {
+      document.getElementById('dot').className = 'dot ' + color;
+      document.getElementById('statusText').textContent = text;
+    }
+    function showBanner(on) { document.getElementById('connBanner').classList.toggle('show', on); }
+    function show(id) { const el = document.getElementById(id); if(el) el.style.display = ''; }
+    function hide(id) { const el = document.getElementById(id); if(el) el.style.display = 'none'; }
+  </script>
 </body>
 </html>
