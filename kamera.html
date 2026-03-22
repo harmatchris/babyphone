@@ -79,6 +79,7 @@ async function initCamera(){
   await buildCamMap();
   startSignaling();
   listenCommands();
+  setupOrientationWatch();
 }
 
 async function buildCamMap(){
@@ -100,8 +101,7 @@ async function buildCamMap(){
   const curId=stream?.getVideoTracks()[0]?.getSettings()?.deviceId;
   for(const [k,v] of Object.entries(camMap)){if(v===curId){activeCamKey=k;break;}}
   if(!camMap[activeCamKey])activeCamKey=Object.keys(camMap)[0]||'1';
-  renderCamButtons();
-  publishCaps();
+  renderCamButtons();publishCaps();
 }
 
 function renderCamButtons(){
@@ -111,8 +111,7 @@ function renderCamButtons(){
     const b=document.createElement('button');
     b.className='camBtn'+(key===activeCamKey?' active':'')+(key==='front'?' flip':'');
     b.textContent=key==='front'?'\u21BA':key+'\xD7';
-    b.onclick=()=>switchCam(key);b.id='camBtn-'+key;
-    bar.appendChild(b);
+    b.onclick=()=>switchCam(key);b.id='camBtn-'+key;bar.appendChild(b);
   }
 }
 
@@ -122,26 +121,21 @@ async function switchCam(key){
     const ns=await navigator.mediaDevices.getUserMedia({video:{deviceId:{exact:camMap[key]},width:{ideal:1280},height:{ideal:720}},audio:true});
     const nv=ns.getVideoTracks()[0],na=ns.getAudioTracks()[0];
     if(pc)pc.getSenders().forEach(s=>{if(s.track?.kind==='video'&&nv)s.replaceTrack(nv);if(s.track?.kind==='audio'&&na)s.replaceTrack(na);});
-    stream.getTracks().forEach(t=>t.stop());
-    stream=ns;document.getElementById('feed').srcObject=stream;
-    activeCamKey=key;renderCamButtons();
-    S.child('caps').update({activeCam:key});
+    stream.getTracks().forEach(t=>t.stop());stream=ns;
+    document.getElementById('feed').srcObject=stream;
+    activeCamKey=key;renderCamButtons();S.child('caps').update({activeCam:key});
   }catch(e){console.warn('switchCam',e);}
 }
 
 function publishCaps(){S.child('caps').set({cams:Object.keys(camMap),activeCam:activeCamKey});}
 
 function listenCommands(){
-  S.child('cmd').on('value',snap=>{
-    const d=snap.val();if(!d)return;
-    if(d.action==='cam'&&d.target)switchCam(d.target);
-  });
+  S.child('cmd').on('value',snap=>{const d=snap.val();if(!d)return;if(d.action==='cam'&&d.target)switchCam(d.target);});
 }
 
 async function startSignaling(){
   setState('orange','Warte auf Viewer...');
-  await S.remove();
-  setTimeout(publishCaps,300);
+  await S.remove();setTimeout(publishCaps,300);
   pc=new RTCPeerConnection(ICE);
   stream.getTracks().forEach(t=>pc.addTrack(t,stream));
   pc.onicecandidate=e=>{if(e.candidate)S.child('ci').push(e.candidate.toJSON());};
@@ -151,36 +145,28 @@ async function startSignaling(){
     else if(st==='connecting')setState('orange','Verbindet...');
     else if(['failed','disconnected'].includes(st)){setState('red','Unterbrochen');setTimeout(()=>startSignaling(),3000);}
   };
-  const offer=await pc.createOffer();
-  await pc.setLocalDescription(offer);
+  const offer=await pc.createOffer();await pc.setLocalDescription(offer);
   await S.child('offer').set({sdp:offer.sdp,type:offer.type});
   S.child('answer').on('value',async snap=>{if(!snap.val()||pc.remoteDescription)return;await pc.setRemoteDescription(new RTCSessionDescription(snap.val()));setState('orange','Verbindet...');});
   S.child('vi').on('child_added',snap=>{if(!pc||!pc.remoteDescription)return;pc.addIceCandidate(new RTCIceCandidate(snap.val())).catch(()=>{});});
 }
 
 function pickMime(){const c=[{mime:'video/mp4;codecs=h264,aac',ext:'mp4'},{mime:'video/mp4',ext:'mp4'},{mime:'video/webm;codecs=vp9,opus',ext:'webm'},{mime:'video/webm',ext:'webm'}];for(const x of c)if(MediaRecorder.isTypeSupported(x.mime))return x;return{mime:'',ext:'mp4'};}
-
 function toggleRec(){if(mr&&mr.state==='recording')stopRec();else startRec();}
-
 function startRec(){
-  if(!stream)return;recChunks=[];
-  const ch=pickMime();recExt=ch.ext;
+  if(!stream)return;recChunks=[];const ch=pickMime();recExt=ch.ext;
   mr=new MediaRecorder(stream,ch.mime?{mimeType:ch.mime}:{});
-  mr.ondataavailable=e=>{if(e.data.size>0)recChunks.push(e.data);};
-  mr.onstop=saveRec;mr.start(1000);recSecs=0;
+  mr.ondataavailable=e=>{if(e.data.size>0)recChunks.push(e.data);};mr.onstop=saveRec;mr.start(1000);recSecs=0;
   recInt=setInterval(()=>{recSecs++;const m=String(Math.floor(recSecs/60)).padStart(2,'0'),s=String(recSecs%60).padStart(2,'0');document.getElementById('recTimer').textContent=m+':'+s;},1000);
   document.getElementById('recBtn').textContent='\u23F9';document.getElementById('recBtn').classList.add('rec-active');
 }
-
 function stopRec(){if(mr&&mr.state!=='inactive')mr.stop();clearInterval(recInt);document.getElementById('recTimer').textContent='';document.getElementById('recBtn').textContent='\u23FA';document.getElementById('recBtn').classList.remove('rec-active');}
-
 function saveRec(){
   if(!recChunks.length)return;
   const blob=new Blob(recChunks,{type:recChunks[0]?.type||'video/mp4'});
   const url=URL.createObjectURL(blob);const a=document.createElement('a');
   const ts=new Date().toISOString().slice(0,19).replace('T','_').replace(/:/g,'-');
-  a.href=url;a.download='babyphone-'+ts+'.'+recExt;
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  a.href=url;a.download='babyphone-'+ts+'.'+recExt;document.body.appendChild(a);a.click();document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url),5000);recChunks=[];
 }
 
@@ -198,6 +184,27 @@ function keepAlive(){
 }
 
 function setState(c,t){document.getElementById('dot').className='dot '+c;document.getElementById('stateLabel').textContent=t;}
+
+// iOS bakes rotation metadata into the track at creation time and does NOT
+// update it when the phone rotates. Fix: get a fresh track on every rotation.
+function setupOrientationWatch(){
+  async function refresh(){
+    await new Promise(r=>setTimeout(r,400));
+    if(!stream||!pc)return;
+    const camId=camMap[activeCamKey];if(!camId)return;
+    try{
+      const ns=await navigator.mediaDevices.getUserMedia({video:{deviceId:{exact:camId},width:{ideal:1280},height:{ideal:720}},audio:false});
+      const newVid=ns.getVideoTracks()[0];
+      const sender=pc.getSenders().find(s=>s.track?.kind==='video');
+      if(sender&&newVid)await sender.replaceTrack(newVid);
+      stream.getVideoTracks().forEach(t=>{t.stop();stream.removeTrack(t);});
+      stream.addTrack(newVid);document.getElementById('feed').srcObject=stream;
+      ns.getAudioTracks().forEach(t=>t.stop());
+    }catch(e){console.warn('orientation refresh',e);}
+  }
+  window.addEventListener('orientationchange',refresh);
+  if(screen.orientation)screen.orientation.addEventListener('change',refresh);
+}
 </script>
 </body>
 </html>
