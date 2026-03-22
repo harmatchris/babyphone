@@ -1,197 +1,203 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Babyphone">
-  <title>Babyphone</title>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-    html,body{width:100%;height:100%;overflow:hidden;background:#000}
-    #liveView{display:none;position:fixed;inset:0}
-    #liveView.visible{display:block}
-    #cameraFeed{width:100%;height:100%;object-fit:cover;display:block}
-    .pill{position:fixed;top:calc(env(safe-area-inset-top,16px) + 12px);left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:100px;padding:8px 18px;display:flex;align-items:center;gap:8px;font-family:-apple-system,sans-serif;font-size:14px;color:#fff;white-space:nowrap;z-index:100}
-    .dot{width:9px;height:9px;border-radius:50%;background:#666;flex-shrink:0}
-    .dot.green{background:#4ade80;animation:blink 2s infinite}
-    .dot.orange{background:#fb923c}
-    .dot.red{background:#f87171}
-    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-    #controls{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:10px;z-index:100}
-    #camRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;padding:0 16px}
-    .cam-btn{background:rgba(0,0,0,.55);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1.5px solid rgba(255,255,255,.25);border-radius:100px;padding:8px 18px;font-family:-apple-system,sans-serif;font-size:14px;font-weight:600;color:#fff;cursor:pointer;transition:background .15s,border-color .15s;white-space:nowrap}
-    .cam-btn.active{background:rgba(255,255,255,.22);border-color:#fff}
-    #nightBtn{background:rgba(0,0,0,.55);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.2);border-radius:100px;padding:12px 28px;font-family:-apple-system,sans-serif;font-size:15px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap}
-    #nightOverlay{display:none;position:fixed;inset:0;background:#000;z-index:200;align-items:center;justify-content:center}
-    #nightOverlay.active{display:flex}
-    #nightHint{color:rgba(255,255,255,.07);font-family:-apple-system,sans-serif;font-size:13px;text-align:center;line-height:1.8;user-select:none;pointer-events:none}
-    .connected-banner{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 120px);left:50%;transform:translateX(-50%);background:rgba(74,222,128,.2);border:1px solid rgba(74,222,128,.5);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:100px;padding:10px 24px;font-family:-apple-system,sans-serif;font-size:14px;color:#4ade80;z-index:100;opacity:0;transition:opacity .4s}
-    .connected-banner.show{opacity:1}
-    #tapScreen{display:none;position:fixed;inset:0;background:#0d0d0f;flex-direction:column;align-items:center;justify-content:center;gap:20px;font-family:-apple-system,sans-serif;color:#fff;text-align:center;padding:32px;cursor:pointer}
-    #tapScreen.visible{display:flex}
-    #tapScreen h1{font-size:26px;font-weight:700}
-    #tapScreen p{font-size:16px;color:#888;line-height:1.5;max-width:280px}
-    .tap-ring{width:90px;height:90px;border-radius:50%;background:rgba(74,222,128,.15);border:2px solid rgba(74,222,128,.4);display:flex;align-items:center;justify-content:center;font-size:40px;animation:ring 2s infinite}
-    @keyframes ring{0%{transform:scale(1);box-shadow:0 0 0 0 rgba(74,222,128,.4)}70%{transform:scale(1.05);box-shadow:0 0 0 20px rgba(74,222,128,0)}100%{transform:scale(1);box-shadow:0 0 0 0 rgba(74,222,128,0)}}
-    #loadScreen{position:fixed;inset:0;background:#0d0d0f;display:flex;align-items:center;justify-content:center}
-    #loadScreen.hidden{display:none}
-    .spinner{width:40px;height:40px;border:3px solid #222;border-top-color:#4ade80;border-radius:50%;animation:spin .8s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
+<title>Babyphone - Kamera</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#000}
+#feed{width:100%;height:100%;object-fit:cover;display:block;background:#000}
+#ui{position:fixed;inset:0;pointer-events:none}
+#statusBar{position:absolute;top:0;left:0;right:0;padding:max(env(safe-area-inset-top),12px) 16px 12px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(to bottom,rgba(0,0,0,.55),transparent);pointer-events:auto}
+.sbLeft{display:flex;align-items:center;gap:8px}
+.dot{width:8px;height:8px;border-radius:50%;background:#666;flex-shrink:0}
+.dot.green{background:#4ade80;animation:blink 2s infinite}
+.dot.orange{background:#fb923c}
+.dot.red{background:#f87171}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+#stateLabel{font-size:13px;color:#ddd;font-family:-apple-system,sans-serif}
+#camBar{position:absolute;bottom:96px;left:0;right:0;display:flex;justify-content:center;gap:8px;padding:0 16px;pointer-events:auto;flex-wrap:wrap}
+.camBtn{background:rgba(0,0,0,.55);border:1.5px solid rgba(255,255,255,.28);border-radius:100px;color:#fff;font-size:13px;font-weight:600;padding:7px 15px;cursor:pointer;font-family:-apple-system,sans-serif;transition:all .15s}
+.camBtn.active{background:rgba(255,220,0,.9);color:#000;border-color:transparent}
+.camBtn.flip{padding:6px 13px;font-size:17px}
+#actionBar{position:absolute;bottom:0;left:0;right:0;padding:16px 0 max(env(safe-area-inset-bottom),20px);display:flex;align-items:center;justify-content:center;gap:20px;background:linear-gradient(to top,rgba(0,0,0,.5),transparent);pointer-events:auto}
+.actionBtn{background:rgba(30,30,30,.7);border:1.5px solid rgba(255,255,255,.2);border-radius:50%;width:54px;height:54px;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;color:#fff}
+.actionBtn.rec-active{background:rgba(220,38,38,.7);border-color:rgba(248,113,113,.6);animation:recpulse 1.5s infinite}
+@keyframes recpulse{0%,100%{opacity:1}50%{opacity:.65}}
+#recTimer{font-size:13px;color:#f87171;font-family:-apple-system,sans-serif;font-variant-numeric:tabular-nums;min-width:38px;text-align:center;font-weight:600}
+#night{position:fixed;inset:0;background:#000;display:none;z-index:100;touch-action:none}
+#night.show{display:block}
+#tapPrompt{position:fixed;inset:0;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:50}
+#tapPrompt.hidden{display:none}
+#tapPrompt .icon{font-size:56px}
+#tapPrompt p{color:#ccc;font-size:15px;font-family:-apple-system,sans-serif;text-align:center;padding:0 32px;line-height:1.6}
+#tapPrompt button{background:#3b82f6;border:none;border-radius:16px;color:#fff;font-size:17px;font-weight:600;padding:15px 40px;cursor:pointer;font-family:-apple-system,sans-serif}
+</style>
 </head>
 <body>
-  <div id="loadScreen"><div class="spinner"></div></div>
-  <div id="tapScreen" onclick="onTap()">
-    <div class="tap-ring">&#x1F4F7;</div>
-    <h1>Babyphone starten</h1>
-    <p>Einmalig tippen um die Kamera zu erlauben. Danach startet die App immer automatisch.</p>
+<video id="feed" autoplay playsinline muted></video>
+<div id="ui">
+  <div id="statusBar">
+    <div class="sbLeft"><div class="dot" id="dot"></div><span id="stateLabel">Starte...</span></div>
   </div>
-  <div id="liveView">
-    <video id="cameraFeed" autoplay playsinline muted></video>
-    <div class="pill"><div class="dot" id="dot"></div><span id="statusText">Starte...</span></div>
-    <div class="connected-banner" id="connBanner">&#x1F7E2; Verbunden mit Computer</div>
-    <div id="controls">
-      <div id="camRow"></div>
-      <button id="nightBtn" onclick="enterNightMode()">&#x1F319; Bildschirm abdunkeln</button>
-    </div>
+  <div id="camBar"></div>
+  <div id="actionBar">
+    <span id="recTimer"></span>
+    <button class="actionBtn" id="recBtn" onclick="toggleRec()">&#x23FA;</button>
+    <button class="actionBtn" onclick="enterNightMode()">&#x1F319;</button>
   </div>
-  <div id="nightOverlay">
-    <div id="nightHint">3x mit 2 Fingern tippen zum Einschalten</div>
-  </div>
-  <script>
-    const FB={apiKey:"AIzaSyBQPi4f2qWg3xA65hLL7IpxOiq3kzVk5ls",authDomain:"ninja-hq-chris.firebaseapp.com",databaseURL:"https://ninja-hq-chris-default-rtdb.firebaseio.com",projectId:"ninja-hq-chris",storageBucket:"ninja-hq-chris.firebasestorage.app",messagingSenderId:"811964168411",appId:"1:811964168411:web:f49a87b1bdcb6aaebf74fe"};
-    firebase.initializeApp(FB);
-    const db=firebase.database(), S=db.ref('babyphone/session');
-    const ICE={iceServers:[
-    {urls:'stun:stun.l.google.com:19302'},
-    {urls:'stun:stun1.l.google.com:19302'},
-    {urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},
-    {urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'},
-    {urls:'turn:openrelay.metered.ca:443?transport=tcp',username:'openrelayproject',credential:'openrelayproject'}
-  ]};
-    let stream=null,pc=null,cameras=[],activeCamId=null;
-    window.addEventListener('load',()=>tryStart(false));
-    async function tryStart(fromTap){
-      let timedOut=false,timer=null;
-      if(!fromTap) timer=setTimeout(()=>{timedOut=true;hide('loadScreen');show('tapScreen');},3000);
-      try{
-        stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
-        if(timer)clearTimeout(timer);
-        if(!timedOut)onCameraReady();
-      }catch(e){
-        if(timer)clearTimeout(timer);
-        hide('loadScreen');
-        if(!fromTap)show('tapScreen');
-        else alert('Kamera verweigert: '+e.message);
-      }
-    }
-    function onTap(){hide('tapScreen');show('loadScreen');tryStart(true);}
-    async function onCameraReady(){
-      hide('loadScreen');hide('tapScreen');
-      document.getElementById('liveView').classList.add('visible');
-      document.getElementById('cameraFeed').srcObject=stream;
-      activeCamId=stream.getVideoTracks()[0]?.getSettings()?.deviceId||null;
-      keepScreenOn();keepAliveAudio();
-      await loadCameras();
-      setupNightExit();
-      startRTC();
-    }
-    async function loadCameras(){
-      try{
-        const devs=await navigator.mediaDevices.enumerateDevices();
-        cameras=devs.filter(d=>d.kind==='videoinput').map(d=>({deviceId:d.deviceId,label:d.label,display:camLabel(d.label)}));
-        renderCamBtns();
-      }catch(e){}
-    }
-    function camLabel(l){
-      const s=l.toLowerCase();
-      if(s.includes('ultra wide')||s.includes('ultrawide'))return '0.5x';
-      if(s.includes('telephoto')||s.includes('tele'))return 'Tele';
-      if(s.includes('front')||s.includes('vorder')||s.includes('facetime'))return '&#x21BA; Vorne';
-      if(s.includes('back')||s.includes('rear')||s.includes('hinten'))return '1x';
-      return l.replace(/[()]/g,'').trim().split(' ').slice(0,2).join(' ')||'Kamera';
-    }
-    function renderCamBtns(){
-      const row=document.getElementById('camRow');row.innerHTML='';
-      if(cameras.length<=1)return;
-      cameras.forEach(cam=>{
-        const b=document.createElement('button');
-        b.className='cam-btn'+(cam.deviceId===activeCamId?' active':'');
-        b.innerHTML=cam.display;b.onclick=()=>switchCam(cam.deviceId);
-        row.appendChild(b);
-      });
-    }
-    async function switchCam(deviceId){
-      if(deviceId===activeCamId)return;
-      try{
-        const ns=await navigator.mediaDevices.getUserMedia({video:{deviceId:{exact:deviceId},width:{ideal:1920},height:{ideal:1080}},audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
-        const nv=ns.getVideoTracks()[0],na=ns.getAudioTracks()[0];
-        if(pc)pc.getSenders().forEach(s=>{if(s.track?.kind==='video'&&nv)s.replaceTrack(nv);if(s.track?.kind==='audio'&&na)s.replaceTrack(na);});
-        stream.getTracks().forEach(t=>t.stop());stream=ns;
-        document.getElementById('cameraFeed').srcObject=stream;
-        activeCamId=deviceId;renderCamBtns();
-      }catch(e){alert('Kamerawechsel fehlgeschlagen: '+e.message);}
-    }
-    async function startRTC(){
-      setStatus('orange','Verbinde...');
-      await S.remove();
-      pc=new RTCPeerConnection(ICE);
-      stream.getTracks().forEach(t=>pc.addTrack(t,stream));
-      let iceBuf=[];
-      pc.onicecandidate=e=>{if(e.candidate)S.child('ci').push(e.candidate.toJSON());};
-      pc.onconnectionstatechange=()=>{
-        const st=pc.connectionState;
-        if(st==='connected'){setStatus('green','Live');showBanner(true);}
-        else if(st==='connecting')setStatus('orange','Verbindet...');
-        else if(['failed','disconnected','closed'].includes(st)){
-          showBanner(false);setStatus('orange','Neuverbindung...');
-          pc.close();pc=null;setTimeout(startRTC,2000);
-        }
-      };
-      const offer=await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      await S.child('offer').set({sdp:offer.sdp,type:offer.type,ts:Date.now()});
-      setStatus('green','Bereit - warte auf Viewer...');
-      S.child('answer').on('value',async snap=>{
-        if(!snap.val()||!pc||pc.remoteDescription)return;
-        try{await pc.setRemoteDescription(new RTCSessionDescription(snap.val()));setStatus('orange','Verbindet...');}catch(e){}
-      });
-      S.child('vi').on('child_added',snap=>{
-        if(!pc)return;
-        const c=snap.val();
-        if(pc.remoteDescription)pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{});
-        else iceBuf.push(c);
-      });
-      pc.addEventListener('signalingstatechange',()=>{
-        if(pc&&pc.signalingState==='stable'){iceBuf.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}));iceBuf=[];}
-      });
-    }
-    function enterNightMode(){document.getElementById('nightOverlay').classList.add('active');}
-    function exitNightMode(){document.getElementById('nightOverlay').classList.remove('active');}
-    function setupNightExit(){
-      const o=document.getElementById('nightOverlay');let cnt=0,t=null;
-      o.addEventListener('touchend',e=>{
-        if(e.changedTouches.length===2&&e.touches.length===0){
-          cnt++;if(t)clearTimeout(t);
-          if(cnt>=3){cnt=0;exitNightMode();}
-          else t=setTimeout(()=>{cnt=0;},800);
-        }
-        e.preventDefault();
-      },{passive:false});
-    }
-    async function keepScreenOn(){
-      try{if('wakeLock'in navigator){const wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{if(document.visibilityState==='visible')keepScreenOn();});}}catch(e){}
-      document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')keepScreenOn();});
-    }
-    function keepAliveAudio(){try{const ctx=new(window.AudioContext||window.webkitAudioContext)(),o=ctx.createOscillator(),g=ctx.createGain();g.gain.value=0.0001;o.connect(g);g.connect(ctx.destination);o.start();}catch(e){}}
-    function setStatus(c,t){document.getElementById('dot').className='dot '+c;document.getElementById('statusText').textContent=t;}
-    function showBanner(on){document.getElementById('connBanner').classList.toggle('show',on);}
-    function show(id){const e=document.getElementById(id);if(e)e.style.display='';}
-    function hide(id){const e=document.getElementById(id);if(e)e.style.display='none';}
-  </script>
+</div>
+<div id="night"></div>
+<div id="tapPrompt">
+  <div class="icon">&#x1F4F7;</div>
+  <p>Kamera starten</p>
+  <button onclick="initCamera()">Starten</button>
+</div>
+<script>
+const FB={apiKey:"AIzaSyBQPi4f2qWg3xA65hLL7IpxOiq3kzVk5ls",authDomain:"ninja-hq-chris.firebaseapp.com",databaseURL:"https://ninja-hq-chris-default-rtdb.firebaseio.com",projectId:"ninja-hq-chris",storageBucket:"ninja-hq-chris.firebasestorage.app",messagingSenderId:"811964168411",appId:"1:811964168411:web:f49a87b1bdcb6aaebf74fe"};
+firebase.initializeApp(FB);
+const db=firebase.database(),S=db.ref('babyphone/session');
+const ICE={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'},{urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'},{urls:'turn:openrelay.metered.ca:443?transport=tcp',username:'openrelayproject',credential:'openrelayproject'}]};
+let stream=null,pc=null,camMap={},activeCamKey='1';
+let mr=null,recChunks=[],recSecs=0,recInt=null,recExt='mp4';
+
+async function initCamera(){
+  document.getElementById('tapPrompt').classList.add('hidden');
+  let gotMedia=false;
+  const hang=setTimeout(()=>{if(!gotMedia){document.getElementById('tapPrompt').classList.remove('hidden');document.getElementById('tapPrompt').querySelector('p').textContent='Bitte nochmals tippen';}},3000);
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:true});
+    gotMedia=true;clearTimeout(hang);
+  }catch(e){clearTimeout(hang);document.getElementById('tapPrompt').classList.remove('hidden');document.getElementById('tapPrompt').querySelector('p').textContent='Fehler: '+e.message;return;}
+  document.getElementById('feed').srcObject=stream;
+  keepAlive();
+  await buildCamMap();
+  startSignaling();
+  listenCommands();
+}
+
+async function buildCamMap(){
+  const devices=await navigator.mediaDevices.enumerateDevices();
+  const vids=devices.filter(d=>d.kind==='videoinput');
+  camMap={};
+  for(const d of vids){
+    const l=d.label.toLowerCase();
+    if(l.includes('front')||l.includes('facetime')||l.includes('user')){camMap['front']=d.deviceId;}
+    else if(l.includes('ultra wide')||l.includes('ultra-wide')||l.includes('0.5')){camMap['0.5']=d.deviceId;}
+    else if(l.includes('5x')||l.includes(' 5 ')){camMap['5']=d.deviceId;}
+    else if(l.includes('tele')||l.includes('telephoto')||l.includes('2x')||l.includes('3x')){camMap['2']=d.deviceId;}
+    else if(l.includes('back')||l.includes('rear')||l.includes('wide')||l.trim()===''){if(!camMap['1'])camMap['1']=d.deviceId;}
+  }
+  if(Object.keys(camMap).length===0){
+    if(vids.length>=2){camMap['front']=vids[0].deviceId;camMap['1']=vids[1].deviceId;}
+    else if(vids.length===1){camMap['1']=vids[0].deviceId;}
+  }
+  const curId=stream?.getVideoTracks()[0]?.getSettings()?.deviceId;
+  for(const [k,v] of Object.entries(camMap)){if(v===curId){activeCamKey=k;break;}}
+  if(!camMap[activeCamKey])activeCamKey=Object.keys(camMap)[0]||'1';
+  renderCamButtons();
+  publishCaps();
+}
+
+function renderCamButtons(){
+  const bar=document.getElementById('camBar');bar.innerHTML='';
+  for(const key of ['0.5','1','2','5','front']){
+    if(!camMap[key])continue;
+    const b=document.createElement('button');
+    b.className='camBtn'+(key===activeCamKey?' active':'')+(key==='front'?' flip':'');
+    b.textContent=key==='front'?'\u21BA':key+'\xD7';
+    b.onclick=()=>switchCam(key);b.id='camBtn-'+key;
+    bar.appendChild(b);
+  }
+}
+
+async function switchCam(key){
+  if(!camMap[key]||key===activeCamKey)return;
+  try{
+    const ns=await navigator.mediaDevices.getUserMedia({video:{deviceId:{exact:camMap[key]},width:{ideal:1280},height:{ideal:720}},audio:true});
+    const nv=ns.getVideoTracks()[0],na=ns.getAudioTracks()[0];
+    if(pc)pc.getSenders().forEach(s=>{if(s.track?.kind==='video'&&nv)s.replaceTrack(nv);if(s.track?.kind==='audio'&&na)s.replaceTrack(na);});
+    stream.getTracks().forEach(t=>t.stop());
+    stream=ns;document.getElementById('feed').srcObject=stream;
+    activeCamKey=key;renderCamButtons();
+    S.child('caps').update({activeCam:key});
+  }catch(e){console.warn('switchCam',e);}
+}
+
+function publishCaps(){S.child('caps').set({cams:Object.keys(camMap),activeCam:activeCamKey});}
+
+function listenCommands(){
+  S.child('cmd').on('value',snap=>{
+    const d=snap.val();if(!d)return;
+    if(d.action==='cam'&&d.target)switchCam(d.target);
+  });
+}
+
+async function startSignaling(){
+  setState('orange','Warte auf Viewer...');
+  await S.remove();
+  setTimeout(publishCaps,300);
+  pc=new RTCPeerConnection(ICE);
+  stream.getTracks().forEach(t=>pc.addTrack(t,stream));
+  pc.onicecandidate=e=>{if(e.candidate)S.child('ci').push(e.candidate.toJSON());};
+  pc.onconnectionstatechange=()=>{
+    const st=pc.connectionState;
+    if(st==='connected')setState('green','Verbunden \u2713');
+    else if(st==='connecting')setState('orange','Verbindet...');
+    else if(['failed','disconnected'].includes(st)){setState('red','Unterbrochen');setTimeout(()=>startSignaling(),3000);}
+  };
+  const offer=await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  await S.child('offer').set({sdp:offer.sdp,type:offer.type});
+  S.child('answer').on('value',async snap=>{if(!snap.val()||pc.remoteDescription)return;await pc.setRemoteDescription(new RTCSessionDescription(snap.val()));setState('orange','Verbindet...');});
+  S.child('vi').on('child_added',snap=>{if(!pc||!pc.remoteDescription)return;pc.addIceCandidate(new RTCIceCandidate(snap.val())).catch(()=>{});});
+}
+
+function pickMime(){const c=[{mime:'video/mp4;codecs=h264,aac',ext:'mp4'},{mime:'video/mp4',ext:'mp4'},{mime:'video/webm;codecs=vp9,opus',ext:'webm'},{mime:'video/webm',ext:'webm'}];for(const x of c)if(MediaRecorder.isTypeSupported(x.mime))return x;return{mime:'',ext:'mp4'};}
+
+function toggleRec(){if(mr&&mr.state==='recording')stopRec();else startRec();}
+
+function startRec(){
+  if(!stream)return;recChunks=[];
+  const ch=pickMime();recExt=ch.ext;
+  mr=new MediaRecorder(stream,ch.mime?{mimeType:ch.mime}:{});
+  mr.ondataavailable=e=>{if(e.data.size>0)recChunks.push(e.data);};
+  mr.onstop=saveRec;mr.start(1000);recSecs=0;
+  recInt=setInterval(()=>{recSecs++;const m=String(Math.floor(recSecs/60)).padStart(2,'0'),s=String(recSecs%60).padStart(2,'0');document.getElementById('recTimer').textContent=m+':'+s;},1000);
+  document.getElementById('recBtn').textContent='\u23F9';document.getElementById('recBtn').classList.add('rec-active');
+}
+
+function stopRec(){if(mr&&mr.state!=='inactive')mr.stop();clearInterval(recInt);document.getElementById('recTimer').textContent='';document.getElementById('recBtn').textContent='\u23FA';document.getElementById('recBtn').classList.remove('rec-active');}
+
+function saveRec(){
+  if(!recChunks.length)return;
+  const blob=new Blob(recChunks,{type:recChunks[0]?.type||'video/mp4'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  const ts=new Date().toISOString().slice(0,19).replace('T','_').replace(/:/g,'-');
+  a.href=url;a.download='babyphone-'+ts+'.'+recExt;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),5000);recChunks=[];
+}
+
+function enterNightMode(){document.getElementById('night').classList.add('show');setupNightExit();}
+function exitNightMode(){document.getElementById('night').classList.remove('show');}
+function setupNightExit(){
+  const o=document.getElementById('night');let cnt=0,t=null;
+  function h(e){if(e.changedTouches.length===2&&e.touches.length===0){cnt++;if(t)clearTimeout(t);if(cnt>=3){cnt=0;o.removeEventListener('touchend',h);exitNightMode();}else t=setTimeout(()=>{cnt=0;},800);}e.preventDefault();}
+  o.addEventListener('touchend',h,{passive:false});
+}
+
+function keepAlive(){
+  if('wakeLock' in navigator)navigator.wakeLock.request('screen').catch(()=>{});
+  try{const ac=new AudioContext(),osc=ac.createOscillator(),g=ac.createGain();g.gain.value=0.0001;osc.connect(g);g.connect(ac.destination);osc.start();}catch(e){}
+}
+
+function setState(c,t){document.getElementById('dot').className='dot '+c;document.getElementById('stateLabel').textContent=t;}
+</script>
 </body>
 </html>
