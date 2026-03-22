@@ -14,6 +14,8 @@
     #liveView { display: none; position: fixed; inset: 0; }
     #liveView.visible { display: block; }
     #cameraFeed { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    /* Top pill */
     .pill {
       position: fixed; top: env(safe-area-inset-top, 16px); left: 50%; transform: translateX(-50%);
       margin-top: 12px; background: rgba(0,0,0,0.55); backdrop-filter: blur(12px);
@@ -26,14 +28,40 @@
     .dot.orange { background: #fb923c; }
     .dot.red { background: #f87171; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* Night mode button */
+    #nightBtn {
+      position: fixed;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 28px);
+      left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,.2); border-radius: 100px;
+      padding: 12px 28px; font-family: -apple-system, sans-serif;
+      font-size: 15px; font-weight: 600; color: #fff;
+      cursor: pointer; z-index: 100; white-space: nowrap;
+    }
+
+    /* Night overlay - pure black screen, tap to exit */
+    #nightOverlay {
+      display: none; position: fixed; inset: 0; background: #000; z-index: 200; cursor: pointer;
+    }
+    #nightOverlay.active { display: flex; align-items: center; justify-content: center; }
+    #nightHint {
+      color: rgba(255,255,255,.07); font-family: -apple-system, sans-serif;
+      font-size: 13px; text-align: center; line-height: 1.6; user-select: none;
+    }
+
+    /* Connected banner */
     .connected-banner {
       position: fixed; bottom: env(safe-area-inset-bottom, 20px); left: 50%; transform: translateX(-50%);
-      margin-bottom: 20px; background: rgba(74,222,128,.2); border: 1px solid rgba(74,222,128,.5);
+      margin-bottom: 80px; background: rgba(74,222,128,.2); border: 1px solid rgba(74,222,128,.5);
       backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 100px;
       padding: 10px 24px; font-family: -apple-system, sans-serif; font-size: 14px; color: #4ade80;
       z-index: 100; opacity: 0; transition: opacity .4s;
     }
     .connected-banner.show { opacity: 1; }
+
+    /* Loading / tap screens */
     #tapScreen {
       display: none; position: fixed; inset: 0; background: #0d0d0f;
       flex-direction: column; align-items: center; justify-content: center;
@@ -41,7 +69,6 @@
       text-align: center; padding: 32px; cursor: pointer;
     }
     #tapScreen.visible { display: flex; }
-    #tapScreen .icon { font-size: 72px; }
     #tapScreen h1 { font-size: 26px; font-weight: 700; }
     #tapScreen p { font-size: 16px; color: #888; line-height: 1.5; max-width: 280px; }
     .tap-ring {
@@ -63,15 +90,23 @@
 </head>
 <body>
   <div id="loadScreen"><div class="spinner"></div></div>
+
   <div id="tapScreen" onclick="onTap()">
     <div class="tap-ring">&#x1F4F7;</div>
     <h1>Babyphone starten</h1>
     <p>Einmalig tippen um die Kamera zu erlauben. Danach startet die App immer automatisch.</p>
   </div>
+
   <div id="liveView">
     <video id="cameraFeed" autoplay playsinline muted></video>
     <div class="pill"><div class="dot" id="dot"></div><span id="statusText">Verbinde...</span></div>
     <div class="connected-banner" id="connBanner">Verbunden mit Computer</div>
+    <button id="nightBtn" onclick="enterNightMode()">&#x1F319; Bildschirm abdunkeln</button>
+  </div>
+
+  <!-- Pure black overlay — tap anywhere to exit -->
+  <div id="nightOverlay" onclick="exitNightMode()">
+    <div id="nightHint">Tippen zum Einschalten</div>
   </div>
 
   <script>
@@ -85,8 +120,7 @@
       let timedOut = false;
       let hangTimer = null;
 
-      // On iOS, getUserMedia can hang silently without a user gesture.
-      // After 3 seconds with no response, fall back to tap screen.
+      // iOS: getUserMedia can hang silently without user gesture — show tap screen after 3s
       if (!fromTap) {
         hangTimer = setTimeout(() => {
           timedOut = true;
@@ -110,15 +144,10 @@
       }
     }
 
-    function onTap() {
-      hide('tapScreen');
-      show('loadScreen');
-      tryStart(true);
-    }
+    function onTap() { hide('tapScreen'); show('loadScreen'); tryStart(true); }
 
     function onCameraReady() {
-      hide('loadScreen');
-      hide('tapScreen');
+      hide('loadScreen'); hide('tapScreen');
       document.getElementById('liveView').classList.add('visible');
       document.getElementById('cameraFeed').srcObject = stream;
       keepScreenOn();
@@ -126,6 +155,15 @@
       connectPeer();
     }
 
+    // ── Night mode: pure black screen, stream keeps running ────
+    function enterNightMode() {
+      document.getElementById('nightOverlay').classList.add('active');
+    }
+    function exitNightMode() {
+      document.getElementById('nightOverlay').classList.remove('active');
+    }
+
+    // ── PeerJS ─────────────────────────────────────────────────
     function connectPeer() {
       if (peer) { try { peer.destroy(); } catch(e){} }
       peer = new Peer(PEER_ID, {
@@ -139,14 +177,13 @@
         if (currentCall) try { currentCall.close(); } catch(e){}
         currentCall = call;
         call.answer(stream);
-        showBanner(true);
-        setStatus('green', 'Wird uebertragen');
+        showBanner(true); setStatus('green', 'Wird uebertragen');
         call.on('close', () => { currentCall = null; showBanner(false); setStatus('orange', 'Bereit - warte auf Viewer...'); });
         call.on('error', () => { currentCall = null; showBanner(false); setStatus('orange', 'Verbindungsfehler'); });
       });
       peer.on('error', err => {
         if (err.type === 'unavailable-id') {
-          setStatus('orange', 'ID belegt - warte...');
+          setStatus('orange', 'ID belegt - warte 6s...');
           setTimeout(() => connectPeer(), 6000);
         } else {
           setStatus('red', 'Fehler: ' + err.type);
@@ -159,6 +196,7 @@
       });
     }
 
+    // ── Keep screen / tab alive ────────────────────────────────
     async function keepScreenOn() {
       try {
         if ('wakeLock' in navigator) {
@@ -177,16 +215,12 @@
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         gain.gain.value = 0.0001;
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
+        osc.connect(gain); gain.connect(ctx.destination); osc.start();
       } catch(e) {}
     }
 
-    function setStatus(color, text) {
-      document.getElementById('dot').className = 'dot ' + color;
-      document.getElementById('statusText').textContent = text;
-    }
+    // ── Helpers ────────────────────────────────────────────────
+    function setStatus(color, text) { document.getElementById('dot').className = 'dot ' + color; document.getElementById('statusText').textContent = text; }
     function showBanner(on) { document.getElementById('connBanner').classList.toggle('show', on); }
     function show(id) { const el = document.getElementById(id); if(el) el.style.display = ''; }
     function hide(id) { const el = document.getElementById(id); if(el) el.style.display = 'none'; }
